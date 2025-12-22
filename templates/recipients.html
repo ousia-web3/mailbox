@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>수신자 관리 - 뉴스레터 시스템</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='linear/linear-theme.css') }}">
+    <style>
+        /* Newsletter Application Specific Styles - Using Linear Design System Variables */
+        body {
+            background-color: var(--color-background-secondary) !important;
+            font-family: var(--font-family-primary) !important;
+            font-size: var(--font-size-regular) !important;
+            line-height: var(--line-height-normal) !important;
+            color: var(--color-text-primary) !important;
+            margin: 0;
+            padding: 0;
+            transition: background-color var(--transition-normal), color var(--transition-normal);
+        }
+
+        .main-container {
+            background-color: var(--color-background-primary);
+            border-radius: var(--border-radius-xl);
+            box-shadow: var(--shadow-lg);
+            margin: var(--spacing-6) auto;
+            max-width: 1200px;
+            overflow: hidden;
+            transition: background-color var(--transition-normal), box-shadow var(--transition-normal);
+        }
+
+        .header {
+            background-color: var(--color-background-primary);
+            border-bottom: 1px solid var(--color-neutral-300);
+            padding: var(--spacing-8);
+            text-align: center;
+            transition: background-color var(--transition-normal), border-color var(--transition-normal);
+        }
+
+        .header h1 {
+            font-size: var(--font-size-title2);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-text-primary);
+            margin: 0 0 var(--spacing-2) 0;
+            line-height: var(--line-height-tight);
+        }
+
+        .header p {
+            font-size: var(--font-size-heading2);
+            color: var(--color-text-secondary);
+            margin: 0;
+            line-height: var(--line-height-normal);
+        }
+
+        .card {
+            background-color: var(--color-background-primary);
+            border: 1px solid var(--color-neutral-300);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: var(--spacing-6);
+            transition: all var(--transition-normal);
+            overflow: hidden;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+            border-color: var(--color-brand-primary);
+        }
+
+        .card-header {
+            background-color: var(--color-background-secondary);
+            border-bottom: 1px solid var(--color-neutral-300);
+            padding: var(--spacing-5) var(--spacing-6);
+            font-weight: var(--font-weight-semibold);
+            color: var(--color-text-primary);
+            font-size: var(--font-size-heading3);
+        }
+
+        .card-body {
+            padding: var(--spacing-6);
+        }
+
+        .btn {
+            font-family: var(--font-family-primary);
+            font-weight: var(--font-weight-medium);
+            border-radius: var(--border-radius-lg);
+            padding: var(--spacing-3) var(--spacing-5);
+            transition: all var(--transition-normal);
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+
+        .btn-primary {
+            background: var(--color-brand-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #4f5bb3;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-success {
+            background: var(--color-accent-green);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #45a049;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-outline-secondary {
+            background: transparent;
+            color: var(--color-text-secondary);
+            border: 1px solid var(--color-neutral-400);
+        }
+
+        .btn-outline-secondary:hover {
+            background: var(--color-neutral-100);
+            border-color: var(--color-neutral-500);
+        }
+
+        .form-control {
+            border: 1px solid var(--color-neutral-300);
+            border-radius: var(--border-radius-md);
+            padding: var(--spacing-3) var(--spacing-4);
+            font-family: var(--font-family-primary);
+            font-size: var(--font-size-regular);
+            transition: all var(--transition-normal);
+            background-color: var(--color-background-primary);
+            color: var(--color-text-primary);
+        }
+
+        .form-control:focus {
+            border-color: var(--color-brand-primary);
+            box-shadow: 0 0 0 2px rgba(94, 106, 210, 0.15);
+            outline: none;
+            background-color: var(--color-background-primary);
+        }
+
+        .input-group-text {
+            background-color: var(--color-background-secondary);
+            border: 1px solid var(--color-neutral-300);
+            color: var(--color-text-secondary);
+        }
+
+        .stats-card {
+            background: var(--color-background-primary);
+            color: var(--color-text-primary);
+            border: 1px solid var(--color-neutral-300);
+            border-radius: var(--border-radius-lg);
+            padding: var(--spacing-6);
+            margin-bottom: var(--spacing-6);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stats-card h3 {
+            font-size: var(--font-size-title1);
+            font-weight: var(--font-weight-bold);
+            margin: 0;
+        }
+
+        .stats-card p {
+            font-size: var(--font-size-regular);
+            margin: var(--spacing-1) 0 0 0;
+            opacity: 0.9;
+        }
+
+        .recipient-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-4) var(--spacing-5);
+            border: 1px solid var(--color-neutral-300);
+            border-radius: var(--border-radius-lg);
+            margin-bottom: var(--spacing-3);
+            background: var(--color-background-primary);
+            transition: all var(--transition-normal);
+        }
+
+        .recipient-item:hover {
+            box-shadow: var(--shadow-sm);
+            border-color: var(--color-brand-primary);
+            transform: translateY(-1px);
+        }
+
+        .recipient-item.highlight {
+            background-color: var(--color-warning-light);
+            border-color: var(--color-warning-primary);
+        }
+
+        .recipient-info {
+            flex: 1;
+        }
+
+        .recipient-email {
+            font-weight: var(--font-weight-semibold);
+            color: var(--color-text-primary);
+            margin-bottom: var(--spacing-1);
+        }
+
+        .recipient-date {
+            font-size: var(--font-size-small);
+            color: var(--color-text-secondary);
+        }
+
+        .btn-remove {
+            color: var(--color-accent-red);
+            background: none;
+            border: none;
+            font-size: var(--font-size-heading2);
+            cursor: pointer;
+            padding: var(--spacing-2);
+            border-radius: var(--border-radius-md);
+            transition: all var(--transition-normal);
+        }
+
+        .btn-remove:hover {
+            color: var(--color-accent-red-dark);
+            background-color: var(--color-accent-red-light);
+            transform: scale(1.1);
+        }
+
+        .search-highlight {
+            background-color: var(--color-warning-light);
+            font-weight: var(--font-weight-semibold);
+            padding: var(--spacing-1) var(--spacing-2);
+            border-radius: var(--border-radius-sm);
+        }
+
+        .alert {
+            border-radius: var(--border-radius-lg);
+            padding: var(--spacing-4) var(--spacing-5);
+            margin-bottom: var(--spacing-4);
+            border: none;
+            font-weight: var(--font-weight-medium);
+            font-size: var(--font-size-regular);
+            line-height: var(--line-height-normal);
+        }
+
+        .alert-success {
+            background-color: var(--color-accent-green-light);
+            color: var(--color-accent-green-dark);
+        }
+
+        .alert-danger {
+            background-color: var(--color-accent-red-light);
+            color: var(--color-accent-red-dark);
+        }
+
+        .alert-info {
+            background-color: var(--color-accent-blue-light);
+            color: var(--color-accent-blue-dark);
+        }
+
+        .alert-warning {
+            background-color: var(--color-accent-orange-light);
+            color: var(--color-accent-orange-dark);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: var(--spacing-6);
+        }
+
+        .spinner-border {
+            width: 2rem;
+            height: 2rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-8);
+            color: var(--color-text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: var(--spacing-4);
+            opacity: 0.5;
+        }
+
+        .shortcut-hint {
+            font-size: var(--font-size-small);
+            color: var(--color-text-secondary);
+            margin-top: var(--spacing-2);
+        }
+
+        .shortcut-key {
+            background-color: var(--color-neutral-200);
+            padding: var(--spacing-1) var(--spacing-2);
+            border-radius: var(--border-radius-sm);
+            font-family: monospace;
+            font-weight: var(--font-weight-semibold);
+        }
+
+        .modal-content {
+            border: 1px solid var(--color-neutral-300);
+            border-radius: var(--border-radius-xl);
+            box-shadow: var(--shadow-xl);
+            background-color: var(--color-background-primary);
+        }
+
+        .modal-header {
+            background-color: var(--color-background-secondary);
+            border-bottom: 1px solid var(--color-neutral-300);
+            padding: var(--spacing-5) var(--spacing-6);
+        }
+
+        .modal-body {
+            padding: var(--spacing-6);
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                margin: var(--spacing-4);
+                border-radius: var(--border-radius-lg);
+            }
+            
+            .header {
+                padding: var(--spacing-6) var(--spacing-4);
+            }
+            
+            .header h1 {
+                font-size: var(--font-size-title3);
+            }
+            
+            .card-body {
+                padding: var(--spacing-4);
+            }
+
+            .recipient-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--spacing-3);
+            }
+
+            .btn-remove {
+                align-self: flex-end;
+            }
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <div class="main-container">
+        <!-- 헤더 -->
+        <div class="header">
+            <h1><i class="fas fa-users"></i> 수신자 관리</h1>
+            <p>뉴스레터 수신자를 효율적으로 관리하세요</p>
+        </div>
+
+        <!-- 통계 카드 -->
+        <div class="stats-card">
+            <div class="row text-center">
+                <div class="col-md-4">
+                    <h3 id="totalCount">0</h3>
+                    <p>전체 수신자</p>
+                </div>
+                <div class="col-md-4">
+                    <h3 id="activeCount">0</h3>
+                    <p>활성 수신자</p>
+                </div>
+                <div class="col-md-4">
+                    <h3 id="inactiveCount">0</h3>
+                    <p>비활성 수신자</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 검색 및 추가 -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-search"></i> 검색 및 추가
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- 검색 (Ctrl+F) -->
+                    <div class="col-md-6 mb-3">
+                        <label for="searchInput" class="form-label">수신자 검색</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" id="searchInput" class="form-control" 
+                                   placeholder="이메일로 검색..." 
+                                   onkeyup="searchRecipients()">
+                        </div>
+                        <div class="shortcut-hint">
+                            <i class="fas fa-keyboard"></i> 단축키: <span class="shortcut-key">Ctrl+F</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 단일 추가 -->
+                    <div class="col-md-6 mb-3">
+                        <label for="singleEmailInput" class="form-label">단일 수신자 추가</label>
+                        <div class="input-group">
+                            <input type="email" id="singleEmailInput" class="form-control" 
+                                   placeholder="이메일 주소 입력...">
+                            <button class="btn btn-primary" onclick="addSingleRecipient()">
+                                <i class="fas fa-plus"></i> 추가
+                            </button>
+                        </div>
+                        <div class="shortcut-hint">
+                            <i class="fas fa-keyboard"></i> 단축키: <span class="shortcut-key">Enter</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 대량 추가 (Ctrl+C/V) -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-copy"></i> 대량 추가
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8 mb-3">
+                        <label for="bulkEmailsInput" class="form-label">대량 수신자 추가</label>
+                        <textarea id="bulkEmailsInput" class="form-control" rows="4" 
+                                  placeholder="여러 이메일을 복사해서 붙여넣기 하세요...&#10;예시:&#10;user1@hanatour.com&#10;user2@hanatour.com&#10;user3@hanatour.com"></textarea>
+                        <div class="shortcut-hint">
+                            <i class="fas fa-info-circle"></i> 지원 형식: 줄바꿈, 쉼표(,), 세미콜론(;)
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex flex-column h-100 justify-content-end">
+                            <button class="btn btn-success mb-2" onclick="addBulkRecipients()">
+                                <i class="fas fa-upload"></i> 대량 추가
+                            </button>
+                            <button class="btn btn-outline-secondary mb-2" onclick="syncToEnv()">
+                                <i class="fas fa-sync"></i> .env 동기화
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="importFromEnv()">
+                                <i class="fas fa-download"></i> .env 가져오기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 수신자 목록 -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-list"></i> 수신자 목록
+                    <span id="recipientCount" class="badge bg-primary ms-2">0</span>
+                </div>
+                <button class="btn btn-outline-primary btn-sm" onclick="refreshList()">
+                    <i class="fas fa-refresh"></i> 새로고침
+                </button>
+            </div>
+            <div class="card-body">
+                <!-- 로딩 표시 -->
+                <div id="loading" class="loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">로딩 중...</span>
+                    </div>
+                    <p class="mt-3">수신자 목록을 불러오는 중...</p>
+                </div>
+
+                <!-- 수신자 목록 -->
+                <div id="recipientsList">
+                    <!-- 동적으로 생성됨 -->
+                </div>
+
+                <!-- 빈 상태 -->
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <i class="fas fa-users"></i>
+                    <h4>수신자가 없습니다</h4>
+                    <p>위의 폼을 사용하여 수신자를 추가해보세요.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 알림 메시지 -->
+        <div id="alertContainer"></div>
+    </div>
+    
+    <!-- 결과 알림 모달 -->
+    <div class="modal fade" id="resultModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="resultModalTitle">결과</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="resultModalBody">
+                    <!-- 동적으로 생성됨 -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let allRecipients = [];
+        let filteredRecipients = [];
+        let currentSearch = '';
+        
+        // 페이지 로드 시 수신자 목록 가져오기
+        document.addEventListener('DOMContentLoaded', function() {
+            loadRecipients();
+            
+            // Ctrl+F 단축키 지원
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && e.key === 'f') {
+                    e.preventDefault();
+                    document.getElementById('searchInput').focus();
+                }
+            });
+            
+            // Enter 키로 단일 추가
+            document.getElementById('singleEmailInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    addSingleRecipient();
+                }
+            });
+        });
+        
+        // 수신자 목록 로드
+        function loadRecipients() {
+            showLoading(true);
+            
+            fetch('/api/recipients')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        allRecipients = data.recipients;
+                        filteredRecipients = allRecipients;
+                        displayRecipients();
+                        updateStats(data.stats);
+                        showAlert('success', '수신자 목록을 불러왔습니다.');
+                    } else {
+                        showAlert('danger', '수신자 목록을 불러오는데 실패했습니다: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('수신자 목록 로드 실패:', error);
+                    showAlert('danger', '수신자 목록을 불러오는데 실패했습니다.');
+                })
+                .finally(() => {
+                    showLoading(false);
+                });
+        }
+        
+        // 수신자 목록 표시
+        function displayRecipients() {
+            const container = document.getElementById('recipientsList');
+            const emptyState = document.getElementById('emptyState');
+            const recipientCount = document.getElementById('recipientCount');
+            
+            container.innerHTML = '';
+            recipientCount.textContent = filteredRecipients.length;
+            
+            if (filteredRecipients.length === 0) {
+                container.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+            
+            container.style.display = 'block';
+            emptyState.style.display = 'none';
+            
+            filteredRecipients.forEach(recipient => {
+                const div = document.createElement('div');
+                div.className = 'recipient-item';
+                
+                // 검색어 하이라이트
+                let emailDisplay = recipient.email;
+                if (currentSearch) {
+                    const regex = new RegExp(`(${currentSearch})`, 'gi');
+                    emailDisplay = recipient.email.replace(regex, '<span class="search-highlight">$1</span>');
+                }
+                
+                div.innerHTML = `
+                    <div class="recipient-info">
+                        <div class="recipient-email">${emailDisplay}</div>
+                        <div class="recipient-date">추가일: ${formatDate(recipient.added_date)}</div>
+                    </div>
+                    <button class="btn-remove" onclick="removeRecipient('${recipient.email}')" title="삭제">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        // 수신자 검색 (Ctrl+F)
+        function searchRecipients() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            currentSearch = query;
+            
+            if (query === '') {
+                filteredRecipients = allRecipients;
+            } else {
+                filteredRecipients = allRecipients.filter(recipient => 
+                    recipient.email.toLowerCase().includes(query)
+                );
+            }
+            
+            displayRecipients();
+        }
+        
+        // 단일 수신자 추가
+        function addSingleRecipient() {
+            const email = document.getElementById('singleEmailInput').value.trim();
+            
+            if (!email) {
+                showAlert('danger', '이메일을 입력해주세요.');
+                return;
+            }
+            
+            fetch('/api/recipients', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email: email })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('singleEmailInput').value = '';
+                    loadRecipients();
+                    showAlert('success', data.message);
+                } else {
+                    showAlert('danger', data.message);
+                }
+            })
+            .catch(error => {
+                showAlert('danger', '추가 중 오류가 발생했습니다.');
+            });
+        }
+        
+        // 대량 수신자 추가
+        function addBulkRecipients() {
+            const emailsText = document.getElementById('bulkEmailsInput').value.trim();
+            
+            if (!emailsText) {
+                showAlert('danger', '이메일 목록을 입력해주세요.');
+                return;
+            }
+            
+            fetch('/api/recipients/bulk', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ emails: emailsText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('bulkEmailsInput').value = '';
+                    loadRecipients();
+                    
+                    let message = data.message;
+                    if (data.result.errors.length > 0) {
+                        message += '\n\n오류 목록:\n' + data.result.errors.slice(0, 5).join('\n');
+                        if (data.result.errors.length > 5) {
+                            message += '\n... (더 많은 오류가 있습니다)';
+                        }
+                    }
+                    
+                    showResult('대량 추가 완료', message, 'success');
+                } else {
+                    showAlert('danger', data.message);
+                }
+            })
+            .catch(error => {
+                showAlert('danger', '대량 추가 중 오류가 발생했습니다.');
+            });
+        }
+        
+        // 수신자 제거
+        function removeRecipient(email) {
+            if (!confirm(`"${email}" 수신자를 제거하시겠습니까?`)) {
+                return;
+            }
+            
+            fetch(`/api/recipients/${encodeURIComponent(email)}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    loadRecipients();
+                    showAlert('success', data.message);
+                } else {
+                    showAlert('danger', data.message);
+                }
+            })
+            .catch(error => {
+                showAlert('danger', '제거 중 오류가 발생했습니다.');
+            });
+        }
+        
+        // .env 파일 동기화
+        function syncToEnv() {
+            fetch('/api/recipients/sync', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showAlert('success', data.message);
+                } else {
+                    showAlert('danger', data.message);
+                }
+            })
+            .catch(error => {
+                showAlert('danger', '동기화 중 오류가 발생했습니다.');
+            });
+        }
+        
+        // 기존 .env 파일에서 가져오기
+        function importFromEnv() {
+            if (!confirm('기존 .env 파일의 수신자를 가져오시겠습니까?')) {
+                return;
+            }
+            
+            fetch('/api/recipients/import-env', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    loadRecipients();
+                    showAlert('success', data.message);
+                } else {
+                    showAlert('danger', data.message);
+                }
+            })
+            .catch(error => {
+                showAlert('danger', '가져오기 중 오류가 발생했습니다.');
+            });
+        }
+        
+        // 통계 업데이트
+        function updateStats(stats) {
+            document.getElementById('totalCount').textContent = stats.total;
+            document.getElementById('activeCount').textContent = stats.active;
+            document.getElementById('inactiveCount').textContent = stats.inactive;
+        }
+        
+        // 결과 모달 표시
+        function showResult(title, message, type) {
+            document.getElementById('resultModalTitle').textContent = title;
+            document.getElementById('resultModalBody').innerHTML = message.replace(/\n/g, '<br>');
+            
+            const modal = new bootstrap.Modal(document.getElementById('resultModal'));
+            modal.show();
+        }
+        
+        // 알림 메시지 표시
+        function showAlert(type, message) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertId = 'alert-' + Date.now();
+            
+            const alertHtml = `
+                <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : 'info-circle'}"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            alertContainer.insertAdjacentHTML('beforeend', alertHtml);
+            
+            // 5초 후 자동 제거
+            setTimeout(() => {
+                const alert = document.getElementById(alertId);
+                if (alert) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+        
+        // 로딩 표시
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            const recipientsList = document.getElementById('recipientsList');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (show) {
+                loading.style.display = 'block';
+                recipientsList.style.display = 'none';
+                emptyState.style.display = 'none';
+            } else {
+                loading.style.display = 'none';
+                recipientsList.style.display = 'block';
+            }
+        }
+        
+        // 목록 새로고침
+        function refreshList() {
+            loadRecipients();
+        }
+        
+        // 날짜 포맷팅
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+    </script>
+</body>
+</html>
