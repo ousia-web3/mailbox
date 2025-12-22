@@ -24,22 +24,30 @@ class EmailSender:
         self.sender_email = os.getenv('EMAIL_SENDER')
         self.sender_password = os.getenv('EMAIL_PASSWORD')
 
-        # 수신자 관리자에서 활성 수신자 가져오기 (새로운 방식)
-        try:
-            from recipient_manager import SimpleRecipientManager
-            recipient_manager = SimpleRecipientManager()
-            self.receiver_emails = recipient_manager.get_active_emails()
-            self.logger.info(f"SimpleRecipientManager에서 수신자 로드: {len(self.receiver_emails)}명")
-        except Exception as e:
-            self.logger.warning(f"SimpleRecipientManager 로드 실패, 기존 .env 방식 사용: {e}")
-            # 폴백: 기존 .env 방식
+        # DRY_RUN 모드 확인: 테스트 시 .env에 지정된 수신자만 사용
+        dry_run_flag = os.getenv('NEWSLETTER_DRY_RUN', '').strip().lower() in ('1', 'true', 'yes')
+        if dry_run_flag:
+            # .env에서 수신자 로드 (쉼표 구분)
             receiver_emails = os.getenv('EMAIL_RECEIVER', '')
             if ',' in receiver_emails:
-                # 쉼표로 구분된 여러 이메일
                 self.receiver_emails = [email.strip() for email in receiver_emails.split(',')]
             else:
-                # 단일 이메일
                 self.receiver_emails = [receiver_emails.strip()] if receiver_emails else []
+            self.logger.info(f"DRY_RUN 모드: .env 수신자 로드: {len(self.receiver_emails)}명")
+        else:
+            # 기존 방식: SimpleRecipientManager 사용
+            try:
+                from recipient_manager import SimpleRecipientManager
+                recipient_manager = SimpleRecipientManager()
+                self.receiver_emails = recipient_manager.get_active_emails()
+                self.logger.info(f"SimpleRecipientManager에서 수신자 로드: {len(self.receiver_emails)}명")
+            except Exception as e:
+                self.logger.warning(f"SimpleRecipientManager 로드 실패, 기존 .env 방식 사용: {e}")
+                receiver_emails = os.getenv('EMAIL_RECEIVER', '')
+                if ',' in receiver_emails:
+                    self.receiver_emails = [email.strip() for email in receiver_emails.split(',')]
+                else:
+                    self.receiver_emails = [receiver_emails.strip()] if receiver_emails else []
 
         # 보안 검증
         validation = self.security_config.validate_environment_variables()

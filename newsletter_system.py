@@ -15,6 +15,7 @@ from news_collector_working import WorkingNewsCollector
 from news_summarizer import NewsSummarizer
 from email_sender import EmailSender
 from keyword_manager import KeywordManager
+from archiver import Archiver
 
 class NewsletterSystem:
     def __init__(self):
@@ -37,6 +38,7 @@ class NewsletterSystem:
             self.news_collector = WorkingNewsCollector()
             self.news_summarizer = NewsSummarizer()
             self.email_sender = EmailSender()
+            self.archiver = Archiver()
             self.logger.info("뉴스레터 시스템 컴포넌트 초기화 완료")
         except Exception as e:
             self.logger.error(f"컴포넌트 초기화 중 오류: {e}")
@@ -229,6 +231,9 @@ class NewsletterSystem:
             else:
                 # 뉴스레터 내용 생성 (새로운 템플릿 사용)
                 newsletter_content = self.generate_newsletter_content_new_template(topic_news_dict)
+                
+                # 아카이빙 (데이터 및 HTML 저장)
+                self.archiver.save_daily_archive(topic_news_dict, newsletter_content)
             
             # 이메일 제목 생성
             subject = f"{os.getenv('NEWSLETTER_TITLE', '[IT본부] 하나투어 뉴스레터')} - {datetime.now().strftime('%Y년 %m월 %d일')}"

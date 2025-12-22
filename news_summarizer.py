@@ -187,9 +187,241 @@ PICK 요약:
             
             return topic_summary
             
+            return topic_summary
+            
         except Exception as e:
             self.logger.error(f"주제 요약 중 오류: {e}")
             return f"{topic_name} 주제 요약 실패"
+
+    def curate_weekly_news(self, weekly_news_list, topic_name):
+        """주간 뉴스 중 중요도 높은 Top 5 선별"""
+        try:
+            if not weekly_news_list:
+                return []
+            
+            # 뉴스 목록 텍스트화
+            news_text = ""
+            for i, news in enumerate(weekly_news_list, 1):
+                news_text += f"{i}. [{news['date']}] {news['title']}\n   요약: {news['summary']}\n\n"
+            
+            prompt = f"""
+다음은 지난 한 주간 수집된 '{topic_name}' 관련 뉴스 목록입니다.
+이 중에서 가장 중요하고 파급력이 큰 뉴스 5개를 선별해주세요.
+
+뉴스 목록:
+{news_text}
+
+응답 형식 (JSON):
+[
+    {{
+        "rank": 1,
+        "original_index": (뉴스 번호),
+        "reason": "선정 이유"
+    }},
+    ...
+]
+오직 JSON 형식으로만 응답해주세요.
+"""
+            
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "당신은 뉴스 큐레이션 전문가입니다. 수많은 뉴스 중에서 가장 가치 있는 뉴스를 선별해주세요."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=500,
+                temperature=0.3,
+                response_format={"type": "json_object"}
+            )
+            
+            result = json.loads(response.choices[0].message.content)
+            selected_indices = [item['original_index'] for item in result.get('news', result.get('items', [])) if 'original_index' in item]
+            
+            # 만약 JSON 파싱 구조가 예상과 다르면 단순 리스트로 처리 시도
+            if not selected_indices and isinstance(result, list):
+                selected_indices = [item['original_index'] for item in result]
+            elif not selected_indices and isinstance(result, dict):
+                 # 키 값을 찾아봄
+                 for key in result:
+                     if isinstance(result[key], list):
+                         selected_indices = [item['original_index'] for item in result[key] if 'original_index' in item]
+                         break
+            
+            # 인덱스 기반으로 뉴스 추출 (1-based index -> 0-based)
+            curated_news = []
+            for idx in selected_indices:
+                if 1 <= idx <= len(weekly_news_list):
+                    curated_news.append(weekly_news_list[idx-1])
+            
+            # 만약 파싱 실패 등으로 선택된 게 없으면 최신순 5개
+            if not curated_news:
+                self.logger.warning(f"AI 큐레이션 실패, 최신순 5개 선택: {topic_name}")
+                curated_news = weekly_news_list[:5]
+                
+            self.logger.info(f"주간 뉴스 큐레이션 완료: {topic_name} - {len(curated_news)}개")
+            return curated_news
+
+        except Exception as e:
+            self.logger.error(f"주간 뉴스 큐레이션 중 오류: {e}")
+            return weekly_news_list[:5]  # 오류 시 상위 5개 반환
+
+    def generate_weekly_insight(self, topic_news_dict):
+        """주간 뉴스 데이터를 바탕으로 주간 인사이트(Weekly Insight) 생성"""
+        try:
+            # 각 주제별 요약 내용 취합
+            summary_text = ""
+            for topic, data in topic_news_dict.items():
+                summary_text += f"[{topic}]\n{data.get('topic_summary', '요약 없음')}\n\n"
+            
+            prompt = f"""
+다음은 이번 주 각 분야별(IT, AI, 여행) 뉴스 요약입니다.
+이를 바탕으로 이번 주의 'Weekly Insight'를 작성해주세요.
+
+내용:
+{summary_text}
+
+요구사항:
+1. 이번 주를 관통하는 핵심 키워드 3개를 뽑아주세요.
+2. 전체적인 기술 및 업계 흐름을 300자 이내로 서술해주세요.
+3. 비즈니스 관점에서의 시사점을 한 문장으로 정리해주세요.
+
+응답 형식:
+**핵심 키워드**: 키워드1, 키워드2, 키워드3
+**주간 트렌드**: (내용)
+**비즈니스 시사점**: (내용)
+"""
+            
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "당신은 IT 비즈니스 인사이트 전문가입니다."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=500,
+                temperature=0.4
+            )
+            
+            insight = response.choices[0].message.content.strip()
+            self.logger.info("주간 인사이트 생성 완료")
+            return insight
+            
+        except Exception as e:
+            self.logger.error(f"주간 인사이트 생성 중 오류: {e}")
+            return "주간 인사이트 생성 실패"
+
+    def generate_monthly_trend_report(self, weekly_insights):
+        """월간 트렌드 리포트 생성"""
+        try:
+            insights_text = "\n\n".join([f"{i+1}주차 인사이트:\n{insight}" for i, insight in enumerate(weekly_insights)])
+            
+            prompt = f"""
+다음은 지난 한 달간의 주간 인사이트 모음입니다.
+이를 종합하여 '월간 IT & 여행 트렌드 리포트'를 작성해주세요.
+
+주간 인사이트 모음:
+{insights_text}
+
+요구사항:
+1. [이달의 핵심 이슈]: 가장 많이 언급되거나 중요했던 이슈 3가지를 선정하여 설명해주세요.
+2. [기술 트렌드 변화]: 한 달간의 기술적 흐름 변화를 분석해주세요.
+3. [여행 산업 동향]: 여행 산업과 관련된 주요 움직임을 정리해주세요.
+4. [Next Month 전망]: 다음 달에 주목해야 할 포인트를 예측해주세요.
+
+응답 형식:
+## 🏆 이달의 핵심 이슈
+(내용)
+
+## 📈 기술 트렌드 변화
+(내용)
+
+## ✈️ 여행 산업 동향
+(내용)
+
+## 🔮 Next Month 전망
+(내용)
+"""
+            
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "당신은 IT/여행 산업 트렌드 분석가입니다. 거시적인 관점에서 월간 리포트를 작성해주세요."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=1000,
+                temperature=0.4
+            )
+            
+            report = response.choices[0].message.content.strip()
+            self.logger.info("월간 트렌드 리포트 생성 완료")
+            return report
+            
+        except Exception as e:
+            self.logger.error(f"월간 트렌드 리포트 생성 중 오류: {e}")
+            return "월간 트렌드 리포트 생성 실패"
+
+    def select_monthly_best_news(self, all_monthly_news):
+        """월간 베스트 뉴스 3~5개 선정"""
+        try:
+            if not all_monthly_news:
+                return []
+                
+            # 뉴스 목록 텍스트화 (최대 30개 정도로 제한하여 토큰 절약)
+            # 각 주차별 Top 뉴스들이므로 이미 퀄리티가 보장됨
+            news_text = ""
+            for i, news in enumerate(all_monthly_news[:30], 1):
+                news_text += f"{i}. [{news['date']}] {news['title']}\n"
+            
+            prompt = f"""
+다음은 지난 한 달간 각 주차별로 선정된 주요 뉴스 목록입니다.
+이 중에서 '이달의 Best of Best' 뉴스 3~5개를 선정해주세요.
+가장 파급력이 크고, 업계에 미친 영향이 큰 순서대로 선정해주세요.
+
+뉴스 목록:
+{news_text}
+
+응답 형식 (JSON):
+[
+    {{
+        "rank": 1,
+        "original_index": (뉴스 번호),
+        "reason": "선정 이유"
+    }},
+    ...
+]
+"""
+            
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "당신은 뉴스 에디터입니다. 최고의 뉴스를 엄선해주세요."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=500,
+                temperature=0.3,
+                response_format={"type": "json_object"}
+            )
+            
+            result = json.loads(response.choices[0].message.content)
+            selected_indices = [item['original_index'] for item in result.get('news', result.get('items', [])) if 'original_index' in item]
+            
+            # 파싱 폴백 로직
+            if not selected_indices and isinstance(result, list):
+                selected_indices = [item['original_index'] for item in result]
+            
+            best_news = []
+            for idx in selected_indices:
+                if 1 <= idx <= len(all_monthly_news):
+                    best_news.append(all_monthly_news[idx-1])
+            
+            if not best_news:
+                best_news = all_monthly_news[:3]
+                
+            self.logger.info(f"월간 베스트 뉴스 선정 완료: {len(best_news)}개")
+            return best_news
+            
+        except Exception as e:
+            self.logger.error(f"월간 베스트 뉴스 선정 중 오류: {e}")
+            return all_monthly_news[:3]
     
     def generate_newsletter_content(self, topic_news_dict):
         """뉴스레터 전체 내용 생성"""
