@@ -1718,12 +1718,43 @@ class WorkingNewsCollector:
             datetime.strptime(date_str, '%Y-%m-%d')
             return date_str
         except ValueError:
-            try:
-                # YYYYMMDD 형식을 YYYY-MM-DD로 변환
-                dt = datetime.strptime(date_str, '%Y%m%d')
-                return dt.strftime('%Y-%m-%d')
-            except ValueError:
-                return None
+            return None
+    
+    def clean_news_content(self, text):
+        """뉴스 본문에서 노이즈 제거"""
+        if not text:
+            return ""
+        
+        import re
+        
+        # 1. 기자 정보 및 이메일 제거
+        text = re.sub(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', '', text) # 이메일
+        text = re.sub(r'\(?([가-힣]{2,4})\s*기자\)?', '', text) # (홍길동 기자), 홍길동 기자
+        text = re.sub(r'[가-힣]{2,4}\s*기자\s*=', '', text) # 홍길동 기자 =
+        
+        # 2. 저작권 및 재배포 금지 문구 제거
+        text = re.sub(r'무단\s*전재\s*및\s*재배포\s*금지', '', text)
+        text = re.sub(r'저작권자\s*\(c\).*', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'Copyrights\s*\(c\).*', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'ⓒ\s*.*', '', text)
+        
+        # 3. 불필요한 공백 및 줄바꿈 정리
+        text = re.sub(r'\n+', '\n', text)
+        text = re.sub(r'\s+', ' ', text)
+        
+        # 4. 기타 노이즈 (구독, 제보 등)
+        noise_patterns = [
+            r'네이버에서 .* 구독하세요',
+            r'SNS .* 팔로우',
+            r'제보하기',
+            r'구독하기',
+            r'좋아요',
+            r'공유하기'
+        ]
+        for pattern in noise_patterns:
+            text = re.sub(pattern, '', text)
+            
+        return text.strip()
     
     def extract_full_content(self, news_url):
         """뉴스 본문 전체 추출"""
@@ -1732,40 +1763,70 @@ class WorkingNewsCollector:
             if response.status_code != 200:
                 return ""
             
+            # 인코딩 처리 (한글 깨짐 방지)
+            if response.encoding == 'ISO-8859-1':
+                response.encoding = response.apparent_encoding
+                
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            # 다양한 뉴스 사이트 본문 선택자
+            # 1. 불필요한 요소 미리 제거 (전역)
+            noise_selectors = [
+                'script', 'style', 'header', 'footer', 'nav', 'aside',
+                '.ad', '.advertisement', '.banner', '.social', '.share',
+                '.related', '.recommend', '.popular', '.best',
+                '.comment', '.reply', '.tag', '.category',
+                '.footer-inner', '.header-inner', '.sidebar',
+                '#footer', '#header', '#sidebar', '#comments',
+                '.article-footer', '.article-header',
+                '.news_guide', '.news_copyright', '.news_related',
+                '.article_bottom', '.article_top',
+                '.img_desc', '.caption', '.vod_area', '.video_area'
+            ]
+            for selector in noise_selectors:
+                for elem in soup.select(selector):
+                    elem.decompose()
+            
+            # 2. 본문 선택자 (우선순위 순)
             content_selectors = [
+                '#dic_area',  # 네이버 뉴스 (신규)
+                '#articleBodyContents',  # 네이버 뉴스 (기존)
                 '#articleBody',  # 네이버 뉴스
-                '.article_body',  # 네이버 뉴스
-                '.article_content',  # 네이버 뉴스
-                '.news_end',  # 네이버 뉴스
-                '.article_body_contents',  # 네이버 뉴스
-                '.article_text',  # 네이버 뉴스
-                '.article',  # 네이버 뉴스
-                '.content',  # 일반 뉴스
-                '.article-content',  # 일반 뉴스
-                '.news-content',  # 일반 뉴스
-                '.post-content',  # 일반 뉴스
-                '.entry-content',  # 일반 뉴스
-                'article',  # 일반 뉴스
-                '.text',  # 일반 뉴스
-                '.body',  # 일반 뉴스
+                '.article_view',  # 다음 뉴스
+                '#harmonyContainer',  # 다음 뉴스
+                '.article_body',
+                '.article_content',
+                '.news_end',
+                '.article_body_contents',
+                '.article_text',
+                '.article',
+                '#article_body',
+                '#article_content',
+                '.content',
+                '.article-content',
+                '.news-content',
+                '.post-content',
+                '.entry-content',
+                'article',
+                '.text',
+                '.body',
             ]
             
             content = ""
             for selector in content_selectors:
                 content_elem = soup.select_one(selector)
                 if content_elem:
-                    # 불필요한 요소 제거
-                    for elem in content_elem.select('script, style, .ad, .advertisement'):
+                    # 선택된 요소 내에서도 노이즈 다시 한번 제거
+                    for elem in content_elem.select('.ad, .advertisement, .banner, .related'):
                         elem.decompose()
                     
-                    content = content_elem.get_text(strip=True)
-                    if len(content) > 100:  # 최소 100자 이상
+                    raw_text = content_elem.get_text(separator='\n', strip=True)
+                    cleaned_text = self.clean_news_content(raw_text)
+                    
+                    if len(cleaned_text) > 100:
+                        content = cleaned_text
                         break
             
-            # 본문이 없으면 제목과 미리보기로 대체
+            # 3. 본문이 없으면 제목과 미리보기로 대체
             if not content or len(content) < 100:
                 title_elem = soup.select_one('h1, .title, .headline')
                 title = title_elem.get_text(strip=True) if title_elem else ""

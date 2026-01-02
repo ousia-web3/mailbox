@@ -128,6 +128,12 @@ class SimpleRecipientManager:
         self.logger.warning(f"제거할 수신자를 찾을 수 없음: {email}")
         return False
     
+    def clear_all_recipients(self):
+        """모든 수신자 제거"""
+        self.recipients = []
+        self.save_recipients()
+        self.logger.info("모든 수신자 제거 완료")
+    
     def search_recipients(self, query: str) -> List[Dict]:
         """수신자 검색 (Ctrl+F 기능)"""
         query = query.lower()
@@ -192,10 +198,13 @@ class SimpleRecipientManager:
         active_emails = self.get_active_emails()
         return ','.join(active_emails)
     
-    def import_from_env(self, env_content: str) -> Dict:
+    def import_from_env(self, env_content: str, overwrite: bool = False) -> Dict:
         """기존 .env 파일에서 수신자 가져오기"""
         if not env_content:
             return {'success_count': 0, 'error_count': 0, 'errors': []}
+        
+        if overwrite:
+            self.clear_all_recipients()
         
         emails = [email.strip() for email in env_content.split(',') if email.strip()]
         return self.add_multiple_recipients('\n'.join(emails))

@@ -534,6 +534,9 @@ def sync_recipients():
 def import_from_env():
     """기존 .env 파일에서 수신자 가져오기"""
     try:
+        data = request.get_json() or {}
+        overwrite = data.get('overwrite', False)
+        
         from recipient_manager import SimpleRecipientManager
         recipient_manager = SimpleRecipientManager()
         
@@ -549,11 +552,11 @@ def import_from_env():
         if not env_content:
             return jsonify({'status': 'error', 'message': '.env 파일에서 수신자 정보를 찾을 수 없습니다.'})
         
-        result = recipient_manager.import_from_env(env_content)
+        result = recipient_manager.import_from_env(env_content, overwrite=overwrite)
         
         return jsonify({
             'status': 'success',
-            'message': f'기존 .env 파일에서 {result["success_count"]}명 가져오기 완료',
+            'message': f'기존 .env 파일에서 {result["success_count"]}명 가져오기 완료' + (' (기존 목록 초기화됨)' if overwrite else ''),
             'result': result
         })
     except Exception as e:

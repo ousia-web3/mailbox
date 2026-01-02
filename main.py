@@ -70,9 +70,8 @@ def run_monthly_newsletter_check():
 def main():
     logger.info("뉴스레터 스케줄러 시작")
     
-    # 1. 데일리 뉴스레터: 매일 09:00, 18:00
+    # 1. 데일리 뉴스레터: 매일 09:00
     schedule.every().day.at("09:00").do(run_daily_newsletter)
-    schedule.every().day.at("18:00").do(run_daily_newsletter)
     
     # 2. 주간 뉴스레터: 매주 월요일 09:00
     schedule.every().monday.at("09:00").do(run_weekly_newsletter)
@@ -81,7 +80,7 @@ def main():
     schedule.every().day.at("09:00").do(run_monthly_newsletter_check)
     
     logger.info("스케줄 등록 완료:")
-    logger.info("- 데일리: 매일 09:00, 18:00")
+    logger.info("- 데일리: 매일 09:00")
     logger.info("- 주간: 매주 월요일 09:00")
     logger.info("- 월간: 매월 첫 영업일 09:00")
     

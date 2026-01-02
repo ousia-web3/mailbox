@@ -1,3 +1,4 @@
+
 # Environment variables
 .env
 .env.local
@@ -5,6 +6,9 @@
 # Logs
 logs/
 *.log
+
+# Archives
+archives/
 
 # Python
 __pycache__/

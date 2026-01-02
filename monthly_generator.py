@@ -137,10 +137,10 @@ class MonthlyNewsletterGenerator:
                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                             <!-- 헤더 -->
                             <tr>
-                                <td style="background: linear-gradient(135deg, #1a2980 0%, #26d0ce 100%); padding: 50px 30px; text-align: center;">
-                                    <span style="background-color: rgba(255,255,255,0.2); color: #ffffff; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; letter-spacing: 1px;">MONTHLY REPORT</span>
-                                    <h1 style="margin: 15px 0 10px 0; color: #ffffff; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">{month_str} IT 트렌드</h1>
-                                    <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 15px;">하나투어 IT본부 | 월간 기술 & 여행 동향</p>
+                                <td style="background-color: #1a2980; background: linear-gradient(135deg, #1a2980 0%, #26d0ce 100%); padding: 50px 30px; text-align: center;">
+                                    <span style="background-color: #3a4a9f; color: #ffffff; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; letter-spacing: 1px; display: inline-block; margin-bottom: 15px;">MONTHLY REPORT</span>
+                                    <h1 style="margin: 0 0 10px 0; color: #ffffff; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">{month_str} IT 트렌드</h1>
+                                    <p style="margin: 0; color: #eeeeee; font-size: 15px;">하나투어 IT본부 | 월간 기술 & 여행 동향</p>
                                 </td>
                             </tr>
                             

@@ -147,10 +147,10 @@ class WeeklyNewsletterGenerator:
                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                             <!-- 헤더 -->
                             <tr>
-                                <td style="background: linear-gradient(135deg, #5E2BB8 0%, #4a90e2 100%); padding: 40px 30px; text-align: center;">
-                                    <span style="background-color: rgba(255,255,255,0.2); color: #ffffff; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; letter-spacing: 1px;">WEEKLY NEWSLETTER</span>
-                                    <h1 style="margin: 15px 0 10px 0; color: #ffffff; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">{title_date}</h1>
-                                    <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 14px;">{date_range_str} | IT본부</p>
+                                <td style="background-color: #5E2BB8; background: linear-gradient(135deg, #5E2BB8 0%, #4a90e2 100%); padding: 40px 30px; text-align: center;">
+                                    <span style="background-color: #7d56c7; color: #ffffff; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; letter-spacing: 1px; display: inline-block; margin-bottom: 10px;">WEEKLY NEWSLETTER</span>
+                                    <h1 style="margin: 0 0 10px 0; color: #ffffff; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">{title_date}</h1>
+                                    <p style="margin: 0; color: #eeeeee; font-size: 14px;">{date_range_str} | IT본부</p>
                                 </td>
                             </tr>
                             
