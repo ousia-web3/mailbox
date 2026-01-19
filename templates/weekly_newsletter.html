@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Weekly Strategic Digest</title>
+    <style>
+      /* Base Styles */
+      body {
+        margin: 0;
+        padding: 0;
+        font-family:
+          "Pretendard",
+          -apple-system,
+          BlinkMacSystemFont,
+          system-ui,
+          Roboto,
+          "Helvetica Neue",
+          "Segoe UI",
+          "Apple SD Gothic Neo",
+          "Noto Sans KR",
+          "Malgun Gothic",
+          sans-serif;
+        background-color: #f1f5f9;
+        color: #334155;
+        -webkit-font-smoothing: antialiased;
+      }
+      table {
+        border-spacing: 0;
+        border-collapse: collapse;
+        width: 100%;
+      }
+      td {
+        padding: 0;
+      }
+      a {
+        text-decoration: none;
+        color: inherit;
+      }
+
+      /* Container */
+      .wrapper {
+        width: 100%;
+        background-color: #f1f5f9;
+        padding: 20px 0;
+      }
+      .main-container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      /* Card Section */
+      .card-section {
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+        margin-bottom: 24px;
+        overflow: hidden;
+      }
+
+      /* Branding Strip: Mint (#08d1d9) */
+      .brand-strip-weekly {
+        height: 8px;
+        background-color: #08d1d9;
+        width: 100%;
+      }
+
+      /* Header Area */
+      .header-content {
+        padding: 40px 20px 32px;
+        text-align: left;
+        background: linear-gradient(to bottom, #ffffff, #f8fafc);
+      }
+      .report-meta {
+        font-size: 12px;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+      .report-title {
+        font-size: 28px;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0 0 12px 0;
+        letter-spacing: -1.5px;
+        line-height: 1.1;
+      }
+      .report-subtitle {
+        font-size: 15px;
+        color: #475569;
+        font-weight: 400;
+        margin: 0;
+      }
+
+      /* Weekly Focus Analysis Box */
+      .focus-section {
+        padding: 0 20px 48px;
+      }
+      .focus-box {
+        padding: 32px;
+        background-color: #f8fafc;
+        border-left: 6px solid #08d1d9; /* Mint Point */
+        border-radius: 8px;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+      }
+      .focus-label {
+        font-size: 13px;
+        font-weight: 700;
+        color: #5e2bb8; /* Purple Point */
+        text-transform: uppercase;
+        margin-bottom: 12px;
+        display: block;
+        letter-spacing: 0.5px;
+      }
+      .focus-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 16px;
+        line-height: 1.4;
+      }
+      .focus-text {
+        font-size: 15px;
+        line-height: 1.8;
+        color: #334155;
+        margin: 0;
+        text-align: justify;
+      }
+
+      /* Main Insights Section */
+      .section-content {
+        padding: 40px 20px;
+      }
+      .section-header {
+        margin-bottom: 32px;
+        border-bottom: 2px solid #f1f5f9;
+        padding-bottom: 12px;
+      }
+      .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #5e2bb8; /* Purple Point */
+        margin: 0;
+      }
+
+      /* Weekly Insight Items */
+      .weekly-item {
+        display: flex;
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #f1f5f9;
+      }
+      .weekly-item:last-child {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+      }
+      .weekly-num {
+        font-size: 24px;
+        font-weight: 800;
+        color: #5e2bb8; /* Purple Point */
+        width: 50px;
+        flex-shrink: 0;
+        line-height: 1;
+        opacity: 0.8;
+      }
+      .weekly-body {
+        flex: 1;
+      }
+      .weekly-item-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 8px;
+        display: block;
+        line-height: 1.4;
+      }
+      .weekly-desc {
+        font-size: 15px;
+        line-height: 1.7;
+        color: #64748b;
+        margin: 0;
+      }
+
+      /* In Other News List */
+      .other-news-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .other-news-list li {
+        margin-bottom: 14px;
+        font-size: 14px;
+        color: #475569;
+        line-height: 1.6;
+        border-bottom: 1px dashed #e2e8f0;
+        padding-bottom: 14px;
+        display: flex;
+        align-items: center;
+      }
+      .other-news-list li:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+      }
+      .other-news-list .news-link {
+        flex: 1;
+        text-decoration: none;
+        color: #475569;
+        transition: color 0.2s;
+      }
+      .other-news-list .news-link:hover {
+        color: #3b82f6;
+        text-decoration: underline;
+      }
+
+      /* Number Badge UI (Dark Gray: #334155) */
+      .number-badge {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        background-color: #334155;
+        color: #ffffff;
+        border-radius: 4px;
+        text-align: center;
+        line-height: 20px;
+        font-size: 11px;
+        font-weight: 700;
+        flex-shrink: 0;
+        margin-right: 12px;
+      }
+
+      /* Footer */
+      .footer-content {
+        background-color: #0f172a;
+        padding: 40px 20px;
+        text-align: center;
+        border-radius: 12px;
+      }
+      .footer-text {
+        font-size: 13px;
+        line-height: 1.6;
+        color: #94a3b8;
+        margin: 0;
+      }
+      .footer-copyright {
+        font-size: 13px;
+        line-height: 1.6;
+        color: #ffffff;
+        margin: 12px 0 0 0;
+        font-weight: 600;
+      }
+
+      @media only screen and (max-width: 600px) {
+        .header-content,
+        .section-content,
+        .focus-section {
+          padding-left: 20px;
+          padding-right: 20px;
+        }
+        .report-title {
+          font-size: 24px;
+        }
+        .focus-title {
+          font-size: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrapper">
+      <div class="main-container">
+        <!-- Header & Weekly Focus Card -->
+        <div class="card-section">
+          <div class="brand-strip-weekly"></div>
+
+          <div class="header-content">
+            <div class="report-meta">{{TITLE_DATE}}</div>
+            <h1 class="report-title">Weekly Strategic Digest</h1>
+            <p class="report-subtitle">
+              한 주간의 하나투어 비즈니스 & 테크 요약
+            </p>
+          </div>
+
+          <div class="focus-section">
+            <div class="focus-box">
+              <span class="focus-label">Weekly Focus Analysis</span>
+              <h2 class="focus-title">
+                {{WEEKLY_INSIGHT_TITLE}}
+              </h2>
+              <p class="focus-text">
+                {{WEEKLY_INSIGHT_CONTENT}}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top 10 Insights Section -->
+        <div class="card-section">
+          <div class="section-content">
+            <div class="section-header">
+              <h2 class="section-title">Top 10 Insights of the Week</h2>
+            </div>
+            
+            <div class="top-10-list">
+              {{TOP_10_ITEMS}}
+            </div>
+
+          </div>
+        </div>
+
+        <!-- In Other News Card -->
+        <div class="card-section">
+          <div class="section-content">
+            <h3
+              style="
+                font-size: 14px;
+                color: #64748b;
+                margin-bottom: 20px;
+                text-transform: uppercase;
+                font-weight: 800;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #f1f5f9;
+                padding-bottom: 16px;
+              "
+            >
+              In Other News
+            </h3>
+            <div class="other-news-list">
+              {{OTHER_NEWS_ITEMS}}
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer-content">
+          <p class="footer-text">
+            본 주간 뉴스레터는 한 주간의 주요 데이터를 바탕으로
+            발행되었습니다.<br />
+            본 이메일은 자동으로 생성되었으며, ChatGPT 4o-mini가 사용되고
+            있습니다.
+          </p>
+          <p class="footer-copyright">
+            © 2026 HANATOUR IT Division. All rights reserved.
+          </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -92,8 +92,8 @@
             <pre><code>mailbox/
 ├── main.py                     # [메인] 스케줄러 실행 파일 (데일리/주간/월간 통합 제어)
 ├── newsletter_system.py        # [데일리] 뉴스레터 생성 및 발송 시스템
-├── weekly_generator.py         # [주간] 주간 뉴스레터 생성기
-├── monthly_generator.py        # [월간] 월간 뉴스레터 생성기
+├── weekly_generator.py         # [주간] 주간 뉴스레터 생성기 *(개발 예정)
+├── monthly_generator.py        # [월간] 월간 뉴스레터 생성기 *(개발 예정)
 ├── news_collector_working.py   # [공통] 뉴스 수집 모듈
 ├── news_summarizer.py          # [공통] AI 요약 및 큐레이션 모듈
 ├── email_sender.py             # [공통] 이메일 발송 모듈
@@ -102,8 +102,8 @@
 ├── run_newsletter.bat          # [실행] 윈도우 배치 실행 스크립트
 └── archives/                   # [데이터] 아카이브 저장소
     ├── daily/                  # 데일리 뉴스 (JSON/HTML)
-    ├── weekly/                 # 주간 뉴스레터 (HTML)
-    └── monthly/                # 월간 뉴스레터 (HTML)</code></pre>
+    ├── weekly/                 # 주간 뉴스레터 (HTML) *(개발 예정)
+    └── monthly/                # 월간 뉴스레터 (HTML) *(개발 예정)</code></pre>
         </div>
 
         <div class="section">
@@ -118,19 +118,20 @@
             <ol>
                 <li><strong>뉴스 수집 (Collection)</strong>
                     <ul>
-                        <li><strong>담당:</strong> <code>WorkingNewsCollector</code></li>
+                        <li><strong>담당:</strong> <code>WorkingNewsCollector</code></li>[주간] 주간 뉴스레터 생성기
                         <li><strong>동작:</strong> 네이버 뉴스 API/크롤링을 통해 설정된 키워드(IT, AI, 여행 등)에 대한 최신 뉴스를 검색합니다.</li>
                         <li><strong>필터링:</strong> 제목 기준 중복 제거, 관련성 낮은 기사 제외, 최신순 정렬.</li>
                     </ul>
                 </li>
                 <li><strong>AI 요약 (Summarization)</strong>
                     <ul>
-                        <li><strong>담당:</strong> <code>NewsSummarizer</code> (GPT-4o-mini)</li>
+                        <li><strong>담당:</strong> <code>NewsSummarizerV2</code> (GPT-4o-mini)</li>
                         <li><strong>동작:</strong>
                             <ul>
-                                <li>개별 기사 3줄 요약.</li>
-                                <li>주제별(IT/AI/여행) 종합 요약 생성.</li>
-                                <li>핵심 내용을 짚어주는 'PICK' 요약 생성.</li>
+                                <li><strong>페르소나 적용:</strong> 하나투어 IT 전략 기획자 관점에서 뉴스 재해석.</li>
+                                <li><strong>통합 요약:</strong> 주제별 흐름을 읽을 수 있는 스토리텔링형 요약.</li>
+                                <li><strong>뉴스 카드:</strong> 각 뉴스별 배지(Badge), 인사이트(Insight), 핵심 요약 제공.</li>
+                                <li><strong>배지 시스템:</strong> Innovation, Industry Analysis, Future Tech, Market Power 분류.</li>
                             </ul>
                         </li>
                     </ul>
@@ -157,7 +158,7 @@
         </div>
 
         <div class="section">
-            <h2>2. 주간 뉴스레터 (Weekly Newsletter)</h2>
+            <h2>2. 주간 뉴스레터 (Weekly Newsletter) - 개발 예정</h2>
             <div class="meta-info">
                 <p><strong>목적:</strong> 지난 한 주간 축적된 데일리 뉴스를 기반으로, AI가 중요 뉴스를 선별(Curation)하고 주간 인사이트를 제공합니다.</p>
                 <p><strong>실행 주기:</strong> 매주 월요일 09:00</p>
@@ -199,7 +200,7 @@
         </div>
 
         <div class="section">
-            <h2>3. 월간 뉴스레터 (Monthly Newsletter)</h2>
+            <h2>3. 월간 뉴스레터 (Monthly Newsletter) - 개발 예정</h2>
             <div class="meta-info">
                 <p><strong>목적:</strong> 한 달간의 데이터를 종합 분석하여 거시적인 트렌드 리포트와 Best 뉴스를 전달합니다.</p>
                 <p><strong>실행 주기:</strong> 매월 첫 영업일 09:00 (예: 1일이 주말이면 월요일 발송)</p>

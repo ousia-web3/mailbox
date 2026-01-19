@@ -150,8 +150,9 @@ class EmailSender:
                 msg['From'] = self.sender_email
                 msg['To'] = receiver_email
 
-                # 이미 HTML 형식인지 확인하여 처리
-                if content.strip().startswith('<!DOCTYPE html') or content.strip().startswith('<html'):
+                # 이미 HTML 형식인지 확인하여 처리 (대소문자 무시)
+                content_lower = content.strip().lower()
+                if content_lower.startswith('<!doctype html') or content_lower.startswith('<html'):
                     # 이미 완전한 HTML 문서인 경우
                     html_content = content
                     # HTML에서 텍스트 추출 (간단한 방법)
@@ -285,13 +286,8 @@ class EmailSender:
         import re
         
         
-        # 상단 인사말 추가
-        header_text = "안녕하세요! 여행 및 기술 동향 관련 소식을 전해드리는 뉴스레터입니다.\n\n"
-        markdown_content = header_text + markdown_content
-        
-        # 하단 안내문 추가
-        footer_text = "\n\n---\n\n본 이메일은 자동으로 생성되었으며, ChatGPT 4o-mini가 사용되고 있습니다."
-        markdown_content = markdown_content + footer_text
+        # 상단 인사말 및 하단 안내문 자동 추가 로직 제거 (템플릿 기반 발송 최적화)
+        html = markdown_content
         
         html = markdown_content
         

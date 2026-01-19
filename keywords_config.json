@@ -1,7 +1,7 @@
 {
   "topics": [
     {
-      "name": "IT",
+      "name": "Technology Trends",
       "keywords": [
         "AI 인프라",
         "양자 컴퓨팅",
@@ -12,7 +12,7 @@
       "weight": 35
     },
     {
-      "name": "AI",
+      "name": "AI Insight",
       "keywords": [
         "에이전틱 AI",
         "구글",
@@ -26,7 +26,7 @@
       "weight": 35
     },
     {
-      "name": "여행",
+      "name": "Travel & Business",
       "keywords": [
         "하나투어",
         "모두투어",
@@ -44,5 +44,5 @@
   "max_articles_per_topic": 10,
   "max_topics": 5,
   "enable_pick_summary": false,
-  "last_updated": "2025-09-29T14:53:13.361754"
+  "last_updated": "2026-01-16T14:27:36.164695"
 }

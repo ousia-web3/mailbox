@@ -29,7 +29,7 @@ class SecurityConfig:
         
         # 필수 환경변수 목록
         required_vars = [
-            'OPENAI_API_KEY',
+            'GEMINI_API_KEY',
             'EMAIL_SENDER', 
             'EMAIL_PASSWORD',
             'EMAIL_RECEIVER'
@@ -37,6 +37,7 @@ class SecurityConfig:
         
         # 선택적 환경변수 목록
         optional_vars = [
+            'OPENAI_API_KEY',
             'NAVER_CLIENT_ID',
             'NAVER_CLIENT_SECRET',
             'NEWSLETTER_TITLE',
@@ -47,16 +48,16 @@ class SecurityConfig:
         # 필수 환경변수 검증
         for var in required_vars:
             value = os.getenv(var)
-            if not value or value in ['your_openai_api_key_here', 'your_email@outlook.com', 
+            if not value or value in ['your_gemini_api_key_here', 'your_email@outlook.com', 
                                      'your_app_password_here', 'receiver1@example.com,receiver2@example.com']:
                 validation_results['missing_vars'].append(var)
                 validation_results['errors'].append(f"필수 환경변수 {var}가 설정되지 않았거나 기본값입니다.")
                 validation_results['is_valid'] = False
         
-        # API 키 형식 검증
-        openai_key = os.getenv('OPENAI_API_KEY')
-        if openai_key and not self._validate_openai_key_format(openai_key):
-            validation_results['warnings'].append("OpenAI API 키 형식이 올바르지 않을 수 있습니다.")
+        # API 키 형식 검증 (Gemini)
+        gemini_key = os.getenv('GEMINI_API_KEY')
+        if gemini_key and not self._validate_api_key_format(gemini_key):
+            validation_results['warnings'].append("Gemini API 키 형식이 올바르지 않을 수 있습니다.")
         
         # 이메일 형식 검증
         email_sender = os.getenv('EMAIL_SENDER')
@@ -78,10 +79,10 @@ class SecurityConfig:
         
         return validation_results
     
-    def _validate_openai_key_format(self, key: str) -> bool:
-        """OpenAI API 키 형식 검증"""
-        # OpenAI 키는 일반적으로 sk-로 시작하고 특정 길이를 가짐
-        return key.startswith('sk-') and len(key) > 20
+    def _validate_api_key_format(self, key: str) -> bool:
+        """API 키 형식 검증 (기본 길이 체크)"""
+        # Gemini 키 등 일반적인 API 키 길이 체크
+        return len(key) > 20
     
     def _validate_email_format(self, email: str) -> bool:
         """이메일 형식 검증"""
@@ -110,7 +111,7 @@ class SecurityConfig:
     def get_safe_config_display(self) -> Dict[str, str]:
         """안전한 설정 정보 표시용 딕셔너리"""
         return {
-            'OPENAI_API_KEY': self.mask_sensitive_value(os.getenv('OPENAI_API_KEY', '')),
+            'GEMINI_API_KEY': self.mask_sensitive_value(os.getenv('GEMINI_API_KEY', '')),
             'NAVER_CLIENT_ID': self.mask_sensitive_value(os.getenv('NAVER_CLIENT_ID', '')),
             'NAVER_CLIENT_SECRET': self.mask_sensitive_value(os.getenv('NAVER_CLIENT_SECRET', '')),
             'EMAIL_SENDER': os.getenv('EMAIL_SENDER', ''),
@@ -137,8 +138,8 @@ class SecurityConfig:
             )
         
         # API 키 순환 권장
-        openai_key = os.getenv('OPENAI_API_KEY')
-        if openai_key and openai_key != 'your_openai_api_key_here':
+        gemini_key = os.getenv('GEMINI_API_KEY')
+        if gemini_key and gemini_key != 'your_gemini_api_key_here':
             recommendations['suggestions'].append(
                 "정기적으로 API 키를 순환(rotation)하는 것을 권장합니다."
             )

@@ -2,6 +2,9 @@ import logging
 import sys
 import os
 
+# 부모 디렉토리를 sys.path에 추가하여 모듈 import 가능하게 설정
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)

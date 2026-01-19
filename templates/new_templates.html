@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>[IT본부] 하나투어 비즈니스 & 테크 브리핑</title>
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif; background-color: #f8f9fa; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        /* Header: Solid Blue matching the reference */
+        .header { background-color: #2563eb; padding: 40px 20px; text-align: center; color: #ffffff; }
+        .header-subtitle { font-size: 12px; opacity: 0.8; letter-spacing: 2px; margin-bottom: 10px; text-transform: uppercase; }
+        .header-title { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+        .header-date { margin: 10px 0 0 0; opacity: 0.9; font-size: 15px; font-weight: 400; }
+        
+        /* Summary Box: Light background, rounded, inside container */
+        .summary-box { margin: 20px; background-color: #f0f7ff; border: 1px solid #dbeafe; border-radius: 16px; padding: 25px; }
+        .summary-title { margin: 0 0 15px 0; font-size: 18px; color: #1e40af; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .summary-content { font-size: 15px; line-height: 1.8; color: #374151; }
+        
+        .section-title { margin: 40px 20px 15px; padding-bottom: 8px; border-bottom: 2px solid #2563eb; color: #1e3a8a; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+        .news-card { margin: 0 20px 25px; border: 1px solid #e5e7eb; border-radius: 16px; padding: 25px; transition: transform 0.2s; background-color: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .news-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); transform: translateY(-2px); }
+        
+        .badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-it { background-color: #e0f2fe; color: #0369a1; }
+        .badge-ai { background-color: #fef3c7; color: #92400e; }
+        .badge-travel { background-color: #dcfce7; color: #166534; }
+        .badge-default { background-color: #f3f4f6; color: #4b5563; }
+        
+        .news-title { font-size: 19px; font-weight: 700; line-height: 1.4; color: #111827; margin: 0 0 12px 0; word-break: keep-all; }
+        .news-desc { font-size: 15px; line-height: 1.6; color: #4b5563; margin-bottom: 15px; word-break: keep-all; }
+        
+        .insight-box { background-color: #f8fafc; border-left: 4px solid #3b82f6; padding: 15px 20px; margin-bottom: 15px; font-size: 14px; color: #334155; font-style: italic; border-radius: 0 8px 8px 0; }
+        
+        .btn-link, .btn-link:visited, .btn-link:active { display: inline-block; color: #2563eb !important; text-decoration: none; font-size: 14px; font-weight: 600; margin-top: 5px; }
+        .btn-link:hover { text-decoration: underline; }
+        
+        .footer { background-color: #1f2937; padding: 40px 20px; text-align: center; color: #9ca3af; font-size: 13px; line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <div style="padding: 20px 0;">
+        <div class="container">
+            <!-- 헤더 -->
+            <div class="header">
+                <div class="header-subtitle">DAILY BRIEFING</div>
+                <h1 class="header-title">하나투어 비즈니스 & 테크</h1>
+                <p class="header-date">{current_date}</p>
+            </div>
+
+            <!-- 핵심 요약 -->
+            <div class="summary-box">
+                <h3 class="summary-title">⚡ 오늘 소식 3줄 컷</h3>
+                <div class="summary-content">
+                    {summary_content}
+                </div>
+            </div>
+
+            <!-- 뉴스 콘텐츠 -->
+            {content_body}
+
+            <!-- 푸터 -->
+            <div class="footer">
+                <p style="margin-bottom: 5px;">본 이메일은 자동으로 생성되었으며, 구글 제미나이 2.5가 사용되고 있습니다.</p>
+                <p style="margin-bottom: 10px;"></p>
+                <p style="margin-bottom: 5px;">© 2026 HANATOUR IT Division. All rights reserved.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

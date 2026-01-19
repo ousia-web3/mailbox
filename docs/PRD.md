@@ -39,17 +39,21 @@
 ### 4.2 AI 요약 (AI Summarization)
 
 - **엔진**: GPT-4o-mini
+- **방식**: 페르소나 기반 요약 (V2 Engine - Strategy Planner)
 - **요약 유형**:
-  - **개별 기사 요약**: 200자 이내, 사실/영향/의미 중심
-  - **주제별 종합 요약**: 해당 주제의 전반적 동향 요약
-  - **PICK 요약**: 핵심 포인트 3-5개 추출 (활성/비활성 설정 가능)
-- **품질 관리**: 전문적 톤앤매너 유지, 가독성 최적화
+  - **통합 요약**: 주제별 핵심 동향을 하나의 스토리로 엮어서 제공
+  - **개별 뉴스 카드**: 각 뉴스별 배지(Badge), 제목, 요약, 인사이트, 링크 제공
+  - **배지 시스템**: Innovation, Industry Analysis, Future Tech, Market Power 등 4가지 분류
+- **품질 관리**: 전문적 톤앤매너 유지, 가독성 최적화, Hallucination 방지 필터링
 
 ### 4.3 이메일 발송 (Email Sending)
 
 - **방식**: SMTP (Outlook 주 사용, Gmail 백업)
-- **형식**: 반응형 HTML 템플릿 (Outlook 호환성 최적화)
-- **내용**: 주제별 섹션 구분, PICK 요약 배너, 기사 원문 링크 포함
+- **형식**: 반응형 HTML 템플릿 (V3 Template - `new_templates.html`)
+- **내용**:
+  - **상단 3줄 요약**: 각 주제별(IT, AI, 여행) 핵심 내용을 1줄로 요약하여 상단 배치
+  - **카드형 레이아웃**: 뉴스별 카드 디자인 적용, 직관적인 배지 및 인사이트 강조
+  - **Outlook 호환성**: MSO 조건부 주석 등을 활용한 완벽한 렌더링 지원
 - **발송 대상**: 관리된 수신자 목록 (단일/대량 발송 지원)
 
 ### 4.4 웹 관리자 (Web Admin Interface)
@@ -111,7 +115,7 @@ graph TD
 
     subgraph "Core System"
         CoreSystem --> Collector[News Collector]
-        CoreSystem --> Summarizer[News Summarizer]
+        CoreSystem --> Summarizer[News Summarizer V2]
         CoreSystem --> Sender[Email Sender]
         CoreSystem --> Manager[Keyword/Recipient Manager]
     end
@@ -137,9 +141,10 @@ graph TD
 
 1. **설정 로드**: `.env`, `keywords_config.json`, `recipients.json` 로드
 2. **뉴스 수집**: 키워드별 네이버 뉴스 검색 -> 메타데이터 추출 -> 중복 제거
-3. **AI 요약**: 뉴스 본문/메타데이터 -> GPT-4o-mini -> 요약 텍스트 생성
-4. **콘텐츠 생성**: 요약 데이터 -> HTML 템플릿 렌더링
-5. **발송**: HTML 콘텐츠 -> SMTP 서버 -> 수신자 이메일
+3. **데이터 전처리**: 본문 길이 검증 및 IT 카테고리 내 AI 관련 뉴스를 AI 카테고리로 자동 재분류
+4. **AI 요약**: 뉴스 본문/메타데이터 -> GPT-4o-mini (V2 Persona) -> 통합 요약 및 카드 데이터 생성
+5. **콘텐츠 생성**: 요약 데이터 -> HTML 템플릿 렌더링
+6. **발송**: HTML 콘텐츠 -> SMTP 서버 -> 수신자 이메일
 
 ## 7. 비기능 요구사항
 

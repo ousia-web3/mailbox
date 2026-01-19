@@ -5,6 +5,7 @@
 
 # Logs
 logs/
+!logs/ERROR_HISTORY.md
 *.log
 
 # Archives
@@ -24,3 +25,5 @@ env/
 # System
 Thumbs.db
 Desktop.ini
+
+nul

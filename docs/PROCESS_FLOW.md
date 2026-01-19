@@ -38,11 +38,12 @@ mailbox/
     - **필터링**: 제목 기준 중복 제거, 관련성 낮은 기사 제외, 최신순 정렬.
 2.  **AI 요약 (Summarization)**
 
-    - **담당**: `NewsSummarizer` (GPT-4o-mini)
+    - **담당**: `NewsSummarizerV2` (GPT-4o-mini)
     - **동작**:
-      - 개별 기사 3줄 요약.
-      - 주제별(IT/AI/여행) 종합 요약 생성.
-      - 핵심 내용을 짚어주는 'PICK' 요약 생성.
+      - **페르소나 적용**: 하나투어 IT 전략 기획자 관점에서 뉴스 재해석.
+      - **통합 요약**: 주제별 흐름을 읽을 수 있는 스토리텔링형 요약.
+      - **뉴스 카드**: 각 뉴스별 배지(Badge), 인사이트(Insight), 핵심 요약 제공.
+      - **배지 시스템**: Innovation, Industry Analysis, Future Tech, Market Power 분류.
 
 3.  **콘텐츠 생성 및 발송 (Generation & Sending)**
 

@@ -65,10 +65,43 @@ class WorkingNewsCollector:
             'start_date': yesterday.strftime('%Y%m%d'),   # YYYYMMDD 형식
             'end_date': yesterday.strftime('%Y%m%d')      # YYYYMMDD 형식
         }
+
+    def get_target_search_date(self):
+        """수집 대상 날짜 반환 (월요일은 토~일, 그 외는 전날)"""
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        
+        # 월요일(0)인 경우 토요일~일요일 수집
+        if now.weekday() == 0:
+            saturday = now - timedelta(days=2)
+            sunday = now - timedelta(days=1)
+            return f"{saturday.strftime('%Y%m%d')}~{sunday.strftime('%Y%m%d')}"
+        else:
+            yesterday = now - timedelta(days=1)
+            return yesterday.strftime('%Y%m%d')
     
     def get_date_range_for_search(self, search_date=None):
         """검색 날짜에 따른 날짜 범위 반환"""
         from datetime import datetime, timedelta
+        
+        # 날짜 범위 처리 (YYYYMMDD~YYYYMMDD)
+        if search_date and '~' in search_date:
+            try:
+                start_str, end_str = search_date.split('~')
+                start_date = datetime.strptime(start_str, '%Y%m%d')
+                end_date = datetime.strptime(end_str, '%Y%m%d')
+                
+                return {
+                    'after': start_date.strftime('%Y-%m-%d'),
+                    'before': end_date.strftime('%Y-%m-%d'),
+                    'start_date': start_str,
+                    'end_date': end_str,
+                    'target_date': end_date,
+                    'target_str': f"{start_date.strftime('%Y-%m-%d')}~{end_date.strftime('%Y-%m-%d')}",
+                    'is_range': True
+                }
+            except Exception as e:
+                self.logger.warning(f"날짜 범위 파싱 오류: {e}, 기본값 사용")
         
         if search_date is None:
             # 기본값: 전날
@@ -94,7 +127,8 @@ class WorkingNewsCollector:
             'start_date': target_date.strftime('%Y%m%d'),
             'end_date': target_date.strftime('%Y%m%d'),
             'target_date': target_date,
-            'target_str': target_str
+            'target_str': target_str,
+            'is_range': False
         }
     
     def should_exclude_hanatour_news(self, title, content, keyword):
@@ -143,6 +177,7 @@ class WorkingNewsCollector:
         
         # 1. 구글 뉴스 검색 (최우선)
         try:
+            self.logger.info(f"구글 뉴스 검색 시도: {keyword}")
             google_news = self.search_google_news(keyword, max_articles, search_date)
             # 구글 뉴스에 우선순위 표시
             for news in google_news:
@@ -152,20 +187,22 @@ class WorkingNewsCollector:
             all_news.extend(google_news)
             self.logger.info(f"구글 뉴스에서 {len(google_news)}개 수집")
         except Exception as e:
-            self.logger.warning(f"구글 뉴스 검색 실패 (다음 소스로 넘어갑니다): {e}")
+            self.logger.error(f"구글 뉴스 검색 실패 (ERROR): {e}")
         
-        # 2. 네이버 뉴스 검색 (두 번째 우선순위)
-        try:
-            naver_news = self.search_real_naver_news(keyword, max_articles, search_date)
-            # 네이버 뉴스에 우선순위 표시
-            for news in naver_news:
-                news['priority'] = 2  # 두 번째 우선순위
-                news['source'] = '네이버뉴스'
-                news['search_date'] = search_date
-            all_news.extend(naver_news)
-            self.logger.info(f"네이버 뉴스에서 {len(naver_news)}개 수집")
-        except Exception as e:
-            self.logger.warning(f"네이버 뉴스 검색 실패 (다음 소스로 넘어갑니다): {e}")
+        # 2. 네이버 뉴스 검색 (API) - 비활성화
+        # try:
+        #     self.logger.info(f"네이버 뉴스 API 검색 시도: {keyword}")
+        #     naver_news = self.search_real_naver_news(keyword, max_articles, search_date)
+        #     # 네이버 뉴스에 우선순위 표시
+        #     for news in naver_news:
+        #         news['priority'] = 2  # 두 번째 우선순위
+        #         news['source'] = '네이버뉴스'
+        #         news['search_date'] = search_date
+        #     all_news.extend(naver_news)
+        #     self.logger.info(f"네이버 뉴스 API에서 {len(naver_news)}개 수집")
+        # except Exception as e:
+        #     self.logger.warning(f"네이버 뉴스 API 검색 실패: {e}")
+        self.logger.info(f"네이버 뉴스 API 검색 건너뜀 (비활성화)")
         
         # 3. 일반 뉴스 사이트 검색 (세 번째 우선순위)
         try:
@@ -179,15 +216,35 @@ class WorkingNewsCollector:
             self.logger.info(f"일반 뉴스에서 {len(general_news)}개 수집")
         except Exception as e:
             self.logger.warning(f"일반 뉴스 검색 실패 (다음 단계로 넘어갑니다): {e}")
+
+        # 4. 네이버 뉴스 크롤링 (마지막 보루) - 비활성화
+        # if len(all_news) == 0:
+        #     try:
+        #         self.logger.info("다른 소스에서 뉴스를 찾지 못해 네이버 뉴스 크롤링 시도")
+        #         crawled_news = self.search_naver_news_crawling(keyword, max_articles, search_date)
+        #         for news in crawled_news:
+        #             news['priority'] = 4
+        #             news['source'] = '네이버크롤링'
+        #             news['search_date'] = search_date
+        #         all_news.extend(crawled_news)
+        #         self.logger.info(f"네이버 뉴스 크롤링에서 {len(crawled_news)}개 수집")
+        #     except Exception as e:
+        #         self.logger.warning(f"네이버 뉴스 크롤링 실패: {e}")
+        if len(all_news) == 0:
+            self.logger.warning("네이버 뉴스 크롤링 건너뜀 (비활성화)")
         
-        # 4. 당일 뉴스 최종 필터링
-        all_news = self.filter_today_news(all_news)
+        # 5. 날짜 기반 엄격한 필터링 (목표 날짜와 일치하는 것만 유지)
+        all_news = self.filter_invalid_dates(all_news, search_date)
         
         # 정교한 중복 제거 (제목 유사성 기반)
         unique_news = self.remove_duplicate_news(all_news, keyword)
         
         # 우선순위와 날짜순으로 정렬 (네이버뉴스 우선, 최신순)
-        unique_news.sort(key=lambda x: (x.get('priority', 999), x.get('date', ''), x.get('title', '')), reverse=False)
+        # 우선순위와 날짜순으로 정렬 (네이버뉴스 우선, 최신순)
+        # 안정 정렬을 이용한 다중 정렬: 먼저 제목(오름차순), 날짜(내림차순) 정렬 후 우선순위(오름차순) 정렬
+        unique_news.sort(key=lambda x: x.get('title', ''))
+        unique_news.sort(key=lambda x: x.get('date', ''), reverse=True)
+        unique_news.sort(key=lambda x: x.get('priority', 999))
         
         self.logger.info(f"총 {len(all_news)}개 수집 → 중복 제거 후 {len(unique_news)}개")
         
@@ -243,11 +300,10 @@ class WorkingNewsCollector:
             # 그룹에서 1개만 유지 (우선순위: 네이버뉴스 > 일반뉴스 > 구글뉴스, 최신순)
             if len(current_group) > 1:
                 # 우선순위와 날짜순으로 정렬
-                current_group.sort(key=lambda x: (
-                    x.get('priority', 999),  # 우선순위 (낮을수록 높음)
-                    x.get('date', ''),       # 날짜 (최신순)
-                    x.get('title', '')       # 제목 (사전순)
-                ))
+                # 우선순위와 날짜순으로 정렬
+                current_group.sort(key=lambda x: x.get('title', ''))
+                current_group.sort(key=lambda x: x.get('date', ''), reverse=True)
+                current_group.sort(key=lambda x: x.get('priority', 999))
                 self.logger.info(f"유사 뉴스 그룹에서 1개 유지: {current_group[0]['title'][:50]}... (총 {len(current_group)}개 중)")
                 
                 # 제거된 뉴스들 로깅
@@ -266,6 +322,12 @@ class WorkingNewsCollector:
         """할인/캐쉬백 뉴스에 대한 강화된 중복 제거"""
         if not news_list:
             return []
+        
+        # 정렬: 우선순위(오름차순) -> 날짜(내림차순)
+        # 이렇게 하면 가장 중요하고 최신인 뉴스가 먼저 처리되어 유지됨
+        news_list.sort(key=lambda x: x.get('title', ''))
+        news_list.sort(key=lambda x: x.get('date', ''), reverse=True)
+        news_list.sort(key=lambda x: x.get('priority', 999))
         
         unique_news = []
         seen_titles = set()
@@ -884,7 +946,9 @@ class WorkingNewsCollector:
                 'techcrunch.com': 'TechCrunch',
                 'theverge.com': 'The Verge',
                 'wired.com': 'Wired',
-                'arstechnica.com': 'Ars Technica'
+                'arstechnica.com': 'Ars Technica',
+                'g-enews.com': '글로벌이코노믹',
+                'etnews.com': '전자신문'
             }
             
             for domain, press in press_mapping.items():
@@ -905,7 +969,7 @@ class WorkingNewsCollector:
     def parse_pub_date(self, pub_date_str):
         """발행일 파싱"""
         if not pub_date_str:
-            return datetime.now().strftime('%Y-%m-%d')
+            return None
         
         try:
             # RFC 822 형식 파싱 (예: "Mon, 12 Aug 2024 10:30:00 +0900")
@@ -918,7 +982,31 @@ class WorkingNewsCollector:
                 dt = datetime.strptime(pub_date_str, '%Y-%m-%d')
                 return dt.strftime('%Y-%m-%d')
             except:
-                return datetime.now().strftime('%Y-%m-%d')
+                return None
+
+    def parse_date_from_text(self, text):
+        """텍스트에서 날짜 추출 및 파싱"""
+        if not text:
+            return None
+            
+        import re
+        try:
+            # 다양한 날짜 패턴 시도
+            patterns = [
+                r'(\d{4})[-.](\d{1,2})[-.](\d{1,2})',  # 2024-01-01, 2024.01.01
+                r'(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일',  # 2024년 1월 1일
+                r'(\d{4})/(\d{1,2})/(\d{1,2})',  # 2024/01/01
+            ]
+            
+            for pattern in patterns:
+                match = re.search(pattern, text)
+                if match:
+                    year, month, day = match.groups()
+                    return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+            
+            return None
+        except Exception:
+            return None
 
     def is_today_news(self, news_date):
         """뉴스가 오늘 발행된 것인지 확인"""
@@ -929,29 +1017,90 @@ class WorkingNewsCollector:
             self.logger.error(f"오늘 뉴스 확인 중 오류: {e}")
             return False
 
-    def filter_today_news(self, news_list):
-        """뉴스 필터링 (당일 뉴스 포함)"""
+    def filter_invalid_dates(self, news_list, target_date=None):
+        """뉴스 날짜 필터링 (target_date와 일치하는지 확인) - 완화된 버전"""
         if not news_list:
             return []
         
-        # 모든 뉴스를 포함 (당일 뉴스 제외하지 않음)
+        # target_date가 없으면 전날로 설정
+        if not target_date:
+            target_date = self.get_yesterday_date_range()['after']
+            
         filtered_news = []
-        today = datetime.now().strftime('%Y-%m-%d')
+        
+        self.logger.info(f"뉴스 날짜 필터링 시작 (목표 날짜: {target_date})")
+        
+        # 범위 필터링 처리
+        is_range = False
+        start_dt = None
+        end_dt = None
+        
+        if target_date and '~' in target_date:
+            try:
+                start_str, end_str = target_date.split('~')
+                start_dt = datetime.strptime(start_str, '%Y%m%d') if len(start_str) == 8 else datetime.strptime(start_str, '%Y-%m-%d')
+                end_dt = datetime.strptime(end_str, '%Y%m%d') if len(end_str) == 8 else datetime.strptime(end_str, '%Y-%m-%d')
+                is_range = True
+            except Exception as e:
+                self.logger.error(f"범위 날짜 파싱 실패: {e} (target_date: {target_date})")
+                pass
         
         for news in news_list:
             news_date = news.get('date', '')
-            # 모든 뉴스를 포함 (날짜 검증만 수행)
-            if news_date:
+            title = news.get('title', '')
+            
+            if not news_date:
+                # 날짜 정보가 없으면 포함 (너무 엄격하게 거르지 않음)
+                self.logger.info(f"날짜 정보 없는 뉴스 포함: {title[:30]}...")
                 filtered_news.append(news)
-            else:
-                self.logger.info(f"날짜 정보 없는 뉴스 제외: {news.get('title', '')[:50]}...")
+                continue
+                
+            # 날짜 정규화 및 비교
+            try:
+                news_dt = datetime.strptime(news_date, '%Y-%m-%d')
+                
+                if is_range and start_dt and end_dt:
+                    # 범위 비교 (앞뒤 5일 여유로 완화)
+                    if (start_dt - timedelta(days=5)) <= news_dt <= (end_dt + timedelta(days=5)):
+                        filtered_news.append(news)
+                    else:
+                        self.logger.info(f"날짜 범위 불일치 뉴스 제외: {title[:30]}... (뉴스: {news_date}, 범위: {target_date})")
+                else:
+                    # 단일 날짜 비교
+                    target_dt = datetime.strptime(target_date, '%Y-%m-%d')
+                    diff = (news_dt - target_dt).days
+                    
+                    # 5일 이내의 뉴스는 모두 허용 (주말, 시차 등 고려)
+                    if abs(diff) <= 5:
+                        filtered_news.append(news)
+                    else:
+                        self.logger.info(f"날짜 불일치 뉴스 제외: {title[:30]}... (뉴스날짜: {news_date}, 목표: {target_date}, 차이: {diff}일)")
+            except:
+                # 날짜 파싱 실패 시 문자열 비교 시도, 실패해도 포함
+                if news_date == target_date:
+                    filtered_news.append(news)
+                else:
+                    # 파싱 실패해도 일단 포함 (중요한 뉴스일 수 있음)
+                    self.logger.info(f"날짜 파싱 실패하지만 뉴스 포함: {title[:30]}... (뉴스날짜: {news_date})")
+                    filtered_news.append(news)
         
-        self.logger.info(f"뉴스 필터링: {len(news_list)}개 → {len(filtered_news)}개")
+        self.logger.info(f"뉴스 필터링 완료: {len(news_list)}개 → {len(filtered_news)}개")
         return filtered_news
     
     def search_google_news(self, keyword, max_articles=3, search_date=None):
         """구글 뉴스 검색 - 날짜 지정 가능"""
+        self.logger.info(f"구글 뉴스 검색 메서드 진입: {keyword}")
         try:
+            # User-Agent 랜덤 변경 (차단 회피)
+            import random
+            user_agents = [
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36',
+                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            ]
+            self.session.headers.update({'User-Agent': random.choice(user_agents)})
+            
             # 개선된 날짜 범위 설정
             date_range = self.get_date_range_for_search(search_date)
             after_date = date_range['after']
@@ -1022,33 +1171,36 @@ class WorkingNewsCollector:
                         # 구글 뉴스에서 실제 발행 날짜 추출 시도
                         actual_date = self.extract_date_from_google_news(link_elem, link)
                         if not actual_date:
-                            actual_date = target_date
-                        
+                            # 날짜 추출 실패 시 범위의 종료일 사용 (유효한 날짜 형식 보장)
+                            from datetime import datetime
+                            if isinstance(date_range.get('target_date'), datetime):
+                                actual_date = date_range['target_date'].strftime('%Y-%m-%d')
+                            else:
+                                actual_date = target_date
+
                         # 날짜 정규화
                         normalized_date = self.normalize_date_format(actual_date)
                         if not normalized_date:
                             self.logger.warning(f"구글 뉴스 날짜 형식 오류로 제외: {title[:50]}... (날짜: {actual_date})")
                             continue
-                        
-                        # 개선된 날짜 검증
+
+                        # 날짜 검증 (±2일 이내만 수집)
                         is_valid, validation_msg = self.validate_news_date(normalized_date, search_date, link)
                         if not is_valid:
                             self.logger.warning(f"구글 뉴스 날짜 검증 실패로 제외: {title[:50]}... - {validation_msg}")
                             continue
-                        
-                        # 당일 뉴스 포함 (실제 발행 날짜 기준)
-                        # if self.is_today_news(normalized_date):
-                        #     self.logger.info(f"구글 뉴스 당일 뉴스 제외: {title[:50]}... (날짜: {normalized_date})")
-                        #     continue
-                        
+
                         # 하나투어 제외 로직 적용
                         if self.should_exclude_hanatour_news(title, full_content, keyword):
                             continue
 
+                        # 발행사 추출
+                        press = self.extract_press_from_url(link)
+
                         news_data = {
                             'title': title,
                             'link': link,
-                            'press': '구글 뉴스',
+                            'press': press,
                             'date': normalized_date,
                             'content_preview': title,
                             'full_content': full_content,
@@ -1118,23 +1270,49 @@ class WorkingNewsCollector:
                     elif link.startswith('/'):
                         link = 'https://news.google.com' + link
                     
-                    # 본문 추출 시도
+                    # [Link Validation] 실제 URL로 리다이렉트 및 유효성 검증
+                    try:
+                        # Google News 링크는 리다이렉트가 필수이므로 확인
+                        # 타임아웃 5초로 설정하여 연결 불가능한 링크 제외
+                        check_response = self.session.get(link, timeout=5, allow_redirects=True)
+                        if check_response.status_code == 200:
+                            final_url = check_response.url
+                            # 리다이렉트가 되지 않고 여전히 구글 뉴스 링크인 경우 (JS 리다이렉트 등) -> 제외
+                            if "news.google.com" in final_url or "google.com/read" in final_url:
+                                self.logger.warning(f"뉴스 링크 리다이렉트 실패(구글뉴스 URL 유지): {final_url}")
+                                # 리다이렉트 실패해도 링크 유지 (사용자가 브라우저에서 접속하면 됨)
+                                link = final_url
+                            else:
+                                link = final_url  # 최종 목적지 URL로 업데이트
+                        else:
+                            self.logger.warning(f"뉴스 링크 접속 실패(Status {check_response.status_code}): {link}")
+                            continue  # 접속 불가 시 수집 제외
+                    except Exception as e:
+                        self.logger.warning(f"뉴스 링크 연결 오류(제외): {e}")
+                        continue  # 연결 오류 시 수집 제외
+
+                    # 본문 추출 시도 (업데이트된 링크 사용)
                     full_content = self.extract_full_content(link)
                     if not full_content:
-                        full_content = f"{title} - {keyword} 관련 뉴스입니다."
+                        full_content = f"{title} - {keyword} 관련 뉴스입니다. 이 기사의 자세한 내용은 원문 링크를 통해 확인하실 수 있습니다. 본문 추출이 원활하지 않아 요약이 제공되지 않을 수 있습니다."
                     
                     # 구글 뉴스에서 실제 발행 날짜 추출 시도
                     actual_date = self.extract_date_from_google_news(item, link)
                     if not actual_date:
-                        actual_date = target_date
-                    
+                        # 날짜 추출 실패 시 범위의 종료일 사용 (유효한 날짜 형식 보장)
+                        from datetime import datetime
+                        if isinstance(date_range.get('target_date'), datetime):
+                            actual_date = date_range['target_date'].strftime('%Y-%m-%d')
+                        else:
+                            actual_date = target_date
+
                     # 날짜 정규화
                     normalized_date = self.normalize_date_format(actual_date)
                     if not normalized_date:
                         self.logger.warning(f"구글 뉴스 날짜 형식 오류로 제외: {title[:50]}... (날짜: {actual_date})")
                         continue
-                    
-                    # 개선된 날짜 검증
+
+                    # 날짜 검증 (±2일 이내만 수집)
                     is_valid, validation_msg = self.validate_news_date(normalized_date, search_date, link)
                     if not is_valid:
                         self.logger.warning(f"구글 뉴스 날짜 검증 실패로 제외: {title[:50]}... - {validation_msg}")
@@ -1149,10 +1327,13 @@ class WorkingNewsCollector:
                     if self.should_exclude_hanatour_news(title, full_content, keyword):
                         continue
 
+                    # 발행사 추출
+                    press = self.extract_press_from_url(link)
+
                     news_data = {
                         'title': title,
                         'link': link,
-                        'press': '구글 뉴스',
+                        'press': press,
                         'date': normalized_date,
                         'content_preview': title,
                         'full_content': full_content,
@@ -1228,6 +1409,18 @@ class WorkingNewsCollector:
                     'name': '중앙일보',
                     'url': f"https://search.joins.com/search?keyword={keyword}",
                     'link_selector': "a[href*='/article/']",
+                    'date_selector': '.date'
+                },
+                {
+                    'name': '한국경제',
+                    'url': f"https://search.hankyung.com/search/news?query={keyword}",
+                    'link_selector': "a[href*='/article/']",
+                    'date_selector': '.txt_date'
+                },
+                {
+                    'name': '매일경제',
+                    'url': f"https://www.mk.co.kr/search?word={keyword}",
+                    'link_selector': "a[href*='/news/']",
                     'date_selector': '.date'
                 }
             ]
@@ -1590,6 +1783,20 @@ class WorkingNewsCollector:
                     '.news-date',
                     '.publish-date',
                 ]
+            elif 'mk.co.kr' in url:  # 매일경제
+                return [
+                    '.date',
+                    '.news_date',
+                    '.t_date',
+                    '.reg_date',
+                ]
+            elif 'hankyung.com' in url:  # 한국경제
+                return [
+                    '.date-time',
+                    '.txt-date',
+                    '.datetime',
+                    '.published',
+                ]
             else:
                 return []  # 기타 사이트는 빈 배열 반환
         except Exception as e:
@@ -1614,6 +1821,7 @@ class WorkingNewsCollector:
                             r'(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일',
                             r'(\d{4})-(\d{1,2})-(\d{1,2})',
                             r'(\d{4})\.(\d{1,2})\.(\d{1,2})',
+                            r'(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})', # 2026. 01. 11 형식
                         ]
                         
                         for pattern in date_patterns:
@@ -1635,59 +1843,115 @@ class WorkingNewsCollector:
     def get_site_specific_content_selectors(self, url):
         """사이트별 특화된 본문 선택자 반환 (안전한 방식)"""
         try:
+            selectors = []
+            
+            # 1. 주요 언론사별 특화 선택자
             if 'khan.co.kr' in url:  # 경향신문
-                return ['.article-body', '.article-content', '.content']
+                selectors = ['.art_body', '.article_txt', '#articleBody']
             elif 'yna.co.kr' in url:  # 연합뉴스
-                return ['.article-body', '.article-content', '.content']
+                selectors = ['.story-news', '.article-body', '#articleWrap']
             elif 'hani.co.kr' in url:  # 한겨레
-                return ['.article-body', '.article-content', '.content']
+                selectors = ['.text', '.article-text', '#a-left-scroll-in']
             elif 'chosun.com' in url:  # 조선일보
-                return ['.article-body', '.article-content', '.content']
+                selectors = ['.article-body', '.news_body_id', '#news_body_id']
             elif 'joongang.co.kr' in url:  # 중앙일보
-                return ['.article-body', '.article-content', '.content']
-            else:
-                return ['.content', '.article-content', '.news-content']
+                selectors = ['.article_body', '#article_body']
+            elif 'donga.com' in url: # 동아일보
+                selectors = ['.article_txt', '#article_txt']
+            elif 'mk.co.kr' in url: # 매일경제
+                selectors = ['.art_txt', '.news_body']
+            elif 'hankyung.com' in url: # 한국경제
+                selectors = ['.article-body', '#articletxt']
+            elif 'etnews.com' in url: # 전자신문
+                selectors = ['.article_body', '#articleBody']
+            elif 'zdnet.co.kr' in url: # ZDNet
+                selectors = ['.view_cont', '#articleBody']
+            
+            # 2. 공통적으로 많이 쓰이는 선택자 (Fallback)
+            common_selectors = [
+                'article', 
+                '.article-body', 
+                '.article_body', 
+                '.news-content', 
+                '.news_body', 
+                '.content', 
+                '#article-view-content-div', 
+                '#articleBody', 
+                '.view_con',
+                '.post-content',
+                '.entry-content'
+            ]
+            
+            # 특화 선택자 + 공통 선택자 (중복 제거)
+            final_selectors = selectors + [s for s in common_selectors if s not in selectors]
+            
+            return final_selectors
+            
         except Exception as e:
             self.logger.error(f"사이트별 본문 선택자 결정 중 오류: {e}")
-            return ['.content', '.article-content']  # 기본값 반환
+            return ['.content', '.article-content', 'article']  # 기본값 반환
 
     def validate_news_date(self, extracted_date, search_date=None, url=None):
-        """추출된 뉴스 날짜의 합리성 검증 (선택적 사용)"""
+        """추출된 뉴스 날짜의 합리성 검증 (엄격한 모드)"""
         try:
             if not extracted_date:
-                return True, "날짜 정보 없음 - 검증 생략"
+                return False, "날짜 정보 없음"
             
             # 날짜 형식 검증
             if not self.is_valid_date_format(extracted_date):
                 return False, f"잘못된 날짜 형식: {extracted_date}"
             
-            # 현재 날짜 기준으로 합리적 범위 검증
-            current_date = datetime.now()
-            extracted_dt = datetime.strptime(extracted_date, '%Y-%m-%d')
+            from datetime import datetime, timedelta
             
-            # 미래 날짜 검증 (1일 이상 미래는 비합리적)
-            if extracted_dt > current_date + timedelta(days=1):
-                return False, f"미래 날짜 비합리적: {extracted_date}"
-            
-            # 과거 날짜 검증 (5년 이상 과거는 의심스러움)
-            if extracted_dt < current_date - timedelta(days=5*365):
-                return False, f"너무 과거 날짜 의심: {extracted_date}"
-            
-            # 전날짜 기준 검증 (전날 발행된 뉴스만 허용)
-            yesterday = current_date - timedelta(days=1)
-            yesterday_str = yesterday.strftime('%Y-%m-%d')
-            
-            # 전날짜와 정확히 일치하는지 검증
-            if extracted_date == yesterday_str:
-                return True, f"전날짜 일치: {extracted_date}"
+            # 기준 날짜 설정
+            if search_date:
+                # 범위 날짜 처리 (YYYYMMDD~YYYYMMDD)
+                if '~' in search_date:
+                    try:
+                        start_str, end_str = search_date.split('~')
+                        start_dt = datetime.strptime(start_str, '%Y%m%d')
+                        end_dt = datetime.strptime(end_str, '%Y%m%d')
+                        
+                        extracted_dt = datetime.strptime(extracted_date, '%Y-%m-%d')
+                        
+                        # 범위 내에 있는지 확인 (앞뒤 1일 여유)
+                        if (start_dt - timedelta(days=1)) <= extracted_dt <= (end_dt + timedelta(days=1)):
+                            return True, f"날짜 범위 내: {extracted_date} (범위: {start_str}~{end_str})"
+                        else:
+                            return False, f"날짜 범위 불일치: {extracted_date} (범위: {start_str}~{end_str})"
+                    except Exception as e:
+                        return False, f"범위 날짜 검증 오류: {e}"
+                
+                # 단일 날짜 처리
+                if len(search_date) == 8:
+                    target_date_str = f"{search_date[:4]}-{search_date[4:6]}-{search_date[6:8]}"
+                else:
+                    target_date_str = search_date
             else:
-                return False, f"전날짜 불일치: 추출={extracted_date}, 기준={yesterday_str}"
+                target_date_str = self.get_yesterday_date_range()['after']
             
-            return True, "검증 통과"
+            # 모든 뉴스 ±1일 검증
+            tolerance = 1
+
+            try:
+                extracted_dt = datetime.strptime(extracted_date, '%Y-%m-%d')
+                target_dt = datetime.strptime(target_date_str, '%Y-%m-%d')
+
+                diff = (extracted_dt - target_dt).days
+
+                if abs(diff) <= tolerance:
+                    return True, f"날짜 허용 범위 내: {extracted_date} (목표: {target_date_str}, 차이: {diff}일)"
+                else:
+                    return False, f"날짜 불일치: 추출={extracted_date}, 목표={target_date_str} (차이: {diff}일)"
+            except Exception as e:
+                # 날짜 파싱 실패 시 문자열 비교로 폴백 (정확히 일치하는 경우만)
+                if extracted_date == target_date_str:
+                    return True, f"날짜 일치 (문자열): {extracted_date}"
+                return False, f"날짜 검증 오류: {e}"
             
         except Exception as e:
             self.logger.error(f"날짜 검증 중 오류: {e}")
-            return True, f"검증 오류 - 기본 허용: {e}"  # 에러 시 기본적으로 허용
+            return False, f"검증 오류: {e}"
 
     def is_valid_date_format(self, date_str):
         """날짜 형식이 유효한지 검증"""
@@ -1758,6 +2022,10 @@ class WorkingNewsCollector:
     
     def extract_full_content(self, news_url):
         """뉴스 본문 전체 추출"""
+        # 구글 뉴스 리다이렉트 URL인 경우 본문 추출 건너뛰기
+        if "news.google.com" in news_url or "google.com/read" in news_url:
+            return "뉴스 원문 보기를 통해 상세 내용을 확인해 주세요. (구글 뉴스 링크)"
+
         try:
             response = self.session.get(news_url, timeout=10)
             if response.status_code != 200:
@@ -1826,16 +2094,40 @@ class WorkingNewsCollector:
                         content = cleaned_text
                         break
             
-            # 3. 본문이 없으면 제목과 미리보기로 대체
+            # 3. 본문이 없거나 너무 짧으면 메타 태그에서 추출 (Fallback 1)
             if not content or len(content) < 100:
+                meta_desc = ""
+                # og:description
+                og_desc = soup.select_one('meta[property="og:description"]')
+                if og_desc and og_desc.get('content'):
+                    meta_desc = og_desc.get('content')
+                
+                # description
+                if not meta_desc:
+                    desc = soup.select_one('meta[name="description"]')
+                    if desc and desc.get('content'):
+                        meta_desc = desc.get('content')
+                
+                if meta_desc and len(meta_desc) > 50:
+                    content = meta_desc
+                    self.logger.info(f"메타 태그에서 본문 대체 추출 ({len(content)}자)")
+
+            # 4. 그래도 없으면 p 태그들을 모두 긁어모음 (Fallback 2)
+            if not content or len(content) < 100:
+                paragraphs = soup.select('p')
+                p_text = "\n".join([p.get_text(strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 30])
+                p_text = self.clean_news_content(p_text)
+                
+                if len(p_text) > 100:
+                    content = p_text
+                    self.logger.info(f"p 태그 집합에서 본문 대체 추출 ({len(content)}자)")
+
+            # 5. 최후의 수단: 제목이라도 반환
+            if not content:
                 title_elem = soup.select_one('h1, .title, .headline')
                 title = title_elem.get_text(strip=True) if title_elem else ""
-                
-                preview_elem = soup.select_one('.summary, .description, .preview')
-                preview = preview_elem.get_text(strip=True) if preview_elem else ""
-                
-                content = f"{title}\n\n{preview}"
-            
+                content = title
+
             return content
             
         except Exception as e:
@@ -2109,9 +2401,40 @@ class WorkingNewsCollector:
                         '.article-date',
                         '.news-date',
                         '.post-date',
-                        '.entry-date',
                         '.publish-date',
+                        '.input-date',
+                        '.reg-date',
+                        '.art_date',
+                        '.view_date',
+                        '.t11', # 일부 사이트 작은 폰트
+                        '.info_date',
+                        'span.txt_info', # 다음 뉴스 등
+                        '.bar_info',
                     ]
+                    
+                    # 텍스트 기반 날짜 검색 (입력, 수정, 업데이트 등)
+                    text_patterns = [
+                        r'입력\s*(\d{4}[-.]\s*\d{1,2}[-.]\s*\d{1,2})',
+                        r'기사입력\s*(\d{4}[-.]\s*\d{1,2}[-.]\s*\d{1,2})',
+                        r'등록\s*(\d{4}[-.]\s*\d{1,2}[-.]\s*\d{1,2})',
+                        r'수정\s*(\d{4}[-.]\s*\d{1,2}[-.]\s*\d{1,2})',
+                        r'업데이트\s*(\d{4}[-.]\s*\d{1,2}[-.]\s*\d{1,2})',
+                        r'(\d{4}[-.]\s*\d{1,2}[-.]\s*\d{1,2})\s*입력',
+                        # 사용자 요청 패턴 (단독 날짜)
+                        r'(\d{4}-\d{1,2}-\d{1,2})',       # 2026-01-11
+                        r'(\d{4}\.\d{1,2}\.\d{1,2})',     # 2026.01.11
+                        r'(\d{4}\.\s+\d{1,2}\.\s+\d{1,2})', # 2026. 01. 11
+                    ]
+                    
+                    import re
+                    body_text = soup.get_text()
+                    for pattern in text_patterns:
+                        match = re.search(pattern, body_text)
+                        if match:
+                            date_str = match.group(1)
+                            parsed_date = self.parse_date_from_text(date_str)
+                            if parsed_date:
+                                return parsed_date
                     
                     for selector in date_selectors:
                         date_elem = soup.select_one(selector)

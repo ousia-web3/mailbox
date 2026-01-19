@@ -1,14 +1,31 @@
 @echo off
-chcp 65001
+title Run Scheduler
 cd /d "%~dp0"
 
-:: 가상환경 활성화 (존재하는 경우)
-if exist venv\Scripts\activate.bat (
-    call venv\Scripts\activate.bat
+echo ========================================
+echo    Run Scheduler Manually
+echo ========================================
+echo.
+
+REM Activate Virtual Environment if exists
+if exist "venv\Scripts\activate.bat" (
+    echo [INFO] Activating virtual environment...
+    call "venv\Scripts\activate.bat"
 )
 
-:: 스케줄러 실행 (백그라운드 유지를 위해 python 실행)
-echo 뉴스레터 통합 스케줄러를 시작합니다...
+REM Run Python Script
+echo [INFO] Running main.py...
 python main.py
 
+REM Fallback to 'py' launcher if 'python' fails
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo [WARN] 'python' command failed. Trying 'py' launcher...
+    py -3 main.py
+)
+
+echo.
+echo ========================================
+echo    Finished.
+echo ========================================
 pause
