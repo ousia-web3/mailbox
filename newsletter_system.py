@@ -364,15 +364,17 @@ class NewsletterSystem:
         # 중복 실행 방지 (Lock 파일 사용)
         lock_file = os.path.join(os.path.dirname(__file__), 'newsletter.lock')
         
-        # 락 파일이 존재하고, 생성된지 30분이 지나지 않았으면 실행 중단
+        # 락 파일이 존재하고, 생성된지 10분이 지나지 않았으면 실행 중단
         if os.path.exists(lock_file):
             try:
                 file_time = os.path.getmtime(lock_file)
-                if (time.time() - file_time) < 1800:  # 30분
-                    self.logger.warning("뉴스레터 생성 프로세스가 이미 실행 중입니다. (Lock 파일 존재)")
+                elapsed_time = time.time() - file_time
+                if elapsed_time < 600:  # 10분 (600초)
+                    remaining_time = int((600 - elapsed_time) / 60)
+                    self.logger.warning(f"뉴스레터 생성 프로세스가 이미 실행 중입니다. (Lock 파일 존재, {remaining_time}분 후 재시도 가능)")
                     return False
                 else:
-                    self.logger.warning("오래된 Lock 파일을 제거하고 새로 시작합니다.")
+                    self.logger.warning(f"오래된 Lock 파일을 제거하고 새로 시작합니다. (경과 시간: {int(elapsed_time/60)}분)")
                     os.remove(lock_file)
             except Exception as e:
                 self.logger.error(f"Lock 파일 확인 중 오류: {e}")
@@ -668,83 +670,80 @@ class NewsletterSystem:
                         end = nf_idx
                 return text[start:end].strip()
 
-            # 1. 전체 핵심 요약 (3줄 컷) 구성
+            # 1. 전체 핵심 요약 (Executive Summary) 추출
             summary_lines_html = ""
             
-            # 카테고리 매핑 (주제 -> 표시 이름)
-            category_map = {
-                "IT": "기술경쟁",
-                "Technology Trends": "기술경쟁",
-                "AI": "시장변화",
-                "AI Insight": "시장변화",
-                "여행": "여행정보",
-                "Travel & Business": "여행정보"
-            }
-            
+            # AI 출력에서 [Executive Summary] 섹션 찾기
+            exec_summary = ""
             for topic_name, topic_data in topic_news_dict.items():
                 topic_summary_text = topic_data.get('topic_summary', '')
                 
-                # AI 출력에서 1줄 요약 추출 시도
-                # 형식: • {topic_name}: (요약) (이모지)
-                summary_line = ""
-                
-                # 1. AI 출력에서 직접 파싱 시도 (더 유연하게)
-                lines = topic_summary_text.split('\n')
-                for line in lines:
-                    line = line.strip()
-                    if not line: continue
+                # [Executive Summary] 섹션 파싱 시도
+                if "[Executive Summary]" in topic_summary_text or "Executive Summary" in topic_summary_text:
+                    lines = topic_summary_text.split('\n')
+                    in_exec_section = False
+                    exec_lines = []
                     
-                    # 정규화: 마크다운 볼드(**) 제거
-                    clean_line = line.replace('**', '')
+                    for line in lines:
+                        line = line.strip()
+                        if "[Executive Summary]" in line or "Executive Summary" in line:
+                            in_exec_section = True
+                            continue
+                        if in_exec_section:
+                            # 다음 섹션 시작 감지
+                            if line.startswith('[') or "분야 핵심 요약" in line or "개별 뉴스 카드" in line:
+                                break
+                            if line and not line.startswith('#') and not line.startswith('─') and not line.startswith('='):
+                                exec_lines.append(line)
                     
-                    # 패턴 1: "• 주제: 내용" 형식 (가장 이상적)
-                    if clean_line.startswith('•') and ':' in clean_line:
-                        parts = clean_line.split(':', 1)
-                        header_part = parts[0]
-                        content_part = parts[1].strip()
-                        
-                        # 주제명 확인 (IT, AI, 여행 등)
-                        # 또는 "분야 핵심 요약" 섹션 아래에 있는 경우 주제명 확인 없이도 채택 가능성 열어둠
-                        if topic_name in header_part or "요약" in header_part or len(lines) < 5:
-                            display_category = category_map.get(topic_name, topic_name)
-                            summary_line = f"• <b>{display_category}:</b> {content_part}"
-                            break
-                    
-                    # 패턴 2: "주제: 내용" 형식 (불렛 없음)
-                    elif ':' in clean_line and (topic_name in clean_line or category_map.get(topic_name) in clean_line):
-                        parts = clean_line.split(':', 1)
-                        content_part = parts[1].strip()
-                        display_category = category_map.get(topic_name, topic_name)
-                        summary_line = f"• <b>{display_category}:</b> {content_part}"
+                    if exec_lines:
+                        exec_summary = ' '.join(exec_lines).strip()
+                        # 끝부분 특수문자 제거
+                        while exec_summary.endswith('-') or exec_summary.endswith('=') or exec_summary.endswith('─'):
+                            exec_summary = exec_summary.rstrip('-=─').strip()
                         break
-
-                # 2. 파싱 실패 시 Fallback (강력한 복구)
-                if not summary_line:
-                    # 요약 섹션(1. xxx) 바로 다음 줄을 가져오거나, 첫 번째 의미 있는 줄을 가져옴
+            
+            # Executive Summary가 있으면 사용, 없으면 기존 방식(주제별 1줄 요약) 사용
+            if exec_summary:
+                summary_lines_html = exec_summary
+                self.logger.info(f"Executive Summary 추출 성공 ({len(exec_summary)}자)")
+            else:
+                self.logger.warning("Executive Summary 추출 실패, 주제별 요약으로 대체")
+                # 카테고리 매핑 (주제 -> 표시 이름)
+                category_map = {
+                    "IT": "기술경쟁",
+                    "Technology Trends": "기술경쟁",
+                    "AI": "시장변화",
+                    "AI Insight": "시장변화",
+                    "여행": "여행정보",
+                    "Travel & Business": "여행정보"
+                }
+                
+                for topic_name, topic_data in topic_news_dict.items():
+                    topic_summary_text = topic_data.get('topic_summary', '')
+                    summary_line = ""
+                    lines = topic_summary_text.split('\n')
+                    
                     for line in lines:
                         line = line.strip().replace('**', '')
                         if not line: continue
-                        if "분야 핵심 요약" in line: continue # 헤더 건너뛰기
-                        if line.startswith('1.'): continue # 섹션 번호 건너뛰기
-                        if "개별 뉴스 카드" in line: break # 다음 섹션 침범 방지
-                        
-                        # 너무 짧은 줄(제목 등) 제외하고 적당히 긴 문장을 요약으로 간주
-                        if len(line) > 20:
-                            display_category = category_map.get(topic_name, topic_name)
-                            # 만약 내용이 "내용 부족" 관련이면 대체 텍스트 사용
-                            if "내용" in line and "부족" in line:
-                                summary_line = f"• <b>{display_category}:</b> 주요 뉴스 업데이트 확인 필요"
-                            else:
-                                summary_line = f"• <b>{display_category}:</b> {line.lstrip('•').strip()}"
-                            break
-                            
-                    # 그래도 없으면 기본 메시지
-                    if not summary_line:
-                        display_category = category_map.get(topic_name, topic_name)
-                        summary_line = f"• <b>{display_category}:</b> 주요 소식을 확인해보세요."
-                
-                if summary_line:
-                    summary_lines_html += f"{summary_line}<br>"
+                        if line.startswith('•') and ':' in line:
+                            parts = line.split(':', 1)
+                            if topic_name in parts[0] or "요약" in parts[0] or len(lines) < 5:
+                                display_category = category_map.get(topic_name, topic_name)
+                                summary_line = f"• <b>{display_category}:</b> {parts[1].strip()}"
+                                break
+                    
+                    if not summary_line and lines:
+                        for line in lines:
+                            line = line.strip().replace('**', '').lstrip('•').strip()
+                            if len(line) > 20 and "분야 핵심 요약" not in line and not line.startswith('1.'):
+                                display_category = category_map.get(topic_name, topic_name)
+                                summary_line = f"• <b>{display_category}:</b> {line}"
+                                break
+                    
+                    if summary_line:
+                        summary_lines_html += f"{summary_line}<br>"
             
             # 2. 뉴스 콘텐츠 구성
             content_body_html = ""
@@ -968,6 +967,24 @@ class NewsletterSystem:
                     elif topic_name in ["여행", "Travel & Business"]:
                         fallback_news["BIZ"] = news_list
 
+            # [중요] AI 요약에 사용된 뉴스 리스트 순서 재현 (ID 매핑용)
+            # news_summarizer_v2.py의 summarize_all_news 메서드와 동일한 로직이어야 함
+            reference_news_list = []
+            if all_news_list:
+                category_news = {}
+                # 순서 보장을 위해 all_news_list 순서대로 처리
+                for news in all_news_list:
+                    category = news.get('category', 'Unknown')
+                    if category not in category_news:
+                        category_news[category] = []
+                    category_news[category].append(news)
+                
+                # 각 카테고리에서 최대 15개씩만 선택 (Summarizer와 동일 로직)
+                for category, news_list in category_news.items():
+                    reference_news_list.extend(news_list[:15])
+            
+            self.logger.info(f"ID 참조용 뉴스 리스트 생성 완료: {len(reference_news_list)}개")
+
             # 섹션별 파싱 및 아이템 수집
             current_section = None
             buffer = []
@@ -1018,7 +1035,9 @@ class NewsletterSystem:
 
             # 2. TECH 섹션 처리
             tech_html, tech_items, next_idx = self._format_cards_v3(
-                section_buffers["tech"], "TECH", fallback_news["TECH"], start_index=global_index
+                section_buffers["tech"], "TECH", fallback_news["TECH"], 
+                start_index=global_index,
+                reference_news_list=reference_news_list
             )
             sections["tech_news_items"] = tech_html
             all_parsed_items.extend(tech_items)
@@ -1026,7 +1045,9 @@ class NewsletterSystem:
 
             # 3. AI 섹션 처리
             ai_html, ai_items, next_idx = self._format_cards_v3(
-                section_buffers["ai"], "AI", fallback_news["AI"], start_index=global_index
+                section_buffers["ai"], "AI", fallback_news["AI"], 
+                start_index=global_index,
+                reference_news_list=reference_news_list
             )
             sections["ai_news_items"] = ai_html
             all_parsed_items.extend(ai_items)
@@ -1034,7 +1055,9 @@ class NewsletterSystem:
 
             # 4. BIZ 섹션 처리
             biz_html, biz_items, next_idx = self._format_cards_v3(
-                section_buffers["biz"], "BIZ", fallback_news["BIZ"], start_index=global_index
+                section_buffers["biz"], "BIZ", fallback_news["BIZ"], 
+                start_index=global_index,
+                reference_news_list=reference_news_list
             )
             sections["biz_news_items"] = biz_html
             all_parsed_items.extend(biz_items)
@@ -1074,25 +1097,81 @@ class NewsletterSystem:
             self.logger.error(f"상세 오류: {traceback.format_exc()}")
             return None
 
-    def _format_cards_v3(self, lines, category, fallback_news_list=None, start_index=1):
+    def _format_cards_v3(self, lines, category, fallback_news_list=None, start_index=1, reference_news_list=None):
         """V3 템플릿용 카드 섹션 HTML 포맷팅 (개선된 파싱 + Fallback + 아이템 반환)"""
         html = ""
         parsed_items = []
         current_card = {}
         local_index = 1
         current_global_index = start_index
-        
+
         import re
 
         # 정규식 패턴 (들여쓰기 허용하도록 개선)
         patterns = {
             'number': r'[-*•]?\s*(?:\*\*)?번호(?:\*\*)?\s*[:.]?\s*(\d+)',
+            'id': r'[-*•]?\s*(?:\*\*)?ID(?:\*\*)?\s*[:.]?\s*(\d+)',
             'title': r'[-*•]?\s*(?:\*\*)?제목(?:\*\*)?\s*[:：]\s*(.+)',
             'summary': r'[-*•]?\s*(?:\*\*)?요약(?:내용)?(?:\*\*)?\s*[:：]\s*(.+)',
             'link': r'[-*•]?\s*(?:\*\*)?링크(?:\*\*)?\s*[:：]?\s*'
         }
 
         self.logger.info(f"[V3 파싱] {category} 섹션 파싱 시작 - AI 출력 라인 수: {len(lines)}")
+
+        # 표 형식 감지 (첫 5줄 내에 '|' 문자가 3개 이상 있으면 표 형식으로 판단)
+        table_format_detected = False
+        for line in lines[:min(5, len(lines))]:
+            if line.count('|') >= 3:
+                table_format_detected = True
+                self.logger.error(f"❌ {category} AI가 표(Table) 형식으로 출력했습니다! 즉시 Fallback 사용")
+                break
+
+        # 표 형식 감지 시 즉시 Fallback
+        if table_format_detected:
+            if fallback_news_list and len(fallback_news_list) > 0:
+                self.logger.warning(f"[V3 Fallback] {category} 표 형식 감지로 인해 원본 뉴스 데이터 {len(fallback_news_list)}개로 대체")
+                # 직접 Fallback 섹션으로 이동 (아래 코드 재사용)
+                html = ""
+                parsed_items = []
+                local_index = 1
+                current_global_index = start_index
+
+                for idx, news in enumerate(fallback_news_list[:5], 1):
+                    summary = news.get('content_preview', '') or news.get('full_content', '') or '요약 없음'
+                    if summary and len(summary) > 200:
+                        summary = summary[:200].strip()
+                        last_period = summary.rfind('.')
+                        if last_period > 100:
+                            summary = summary[:last_period + 1]
+
+                    fallback_card = {
+                        'number': str(idx),
+                        'title': news.get('title', '제목 없음'),
+                        'summary': summary,
+                        'link': news.get('link', '#')
+                    }
+
+                    # skip_validation=True로 품질 검증 우회 (이미 Fallback 데이터이므로)
+                    card_html, card_item = self._create_card_html_v3(fallback_card, local_index, current_global_index, news, skip_validation=True)
+                    if card_html:
+                        html += card_html
+                        parsed_items.append(card_item)
+                        local_index += 1
+                        current_global_index += 1
+
+                self.logger.info(f"[V3 Fallback] {category} 표 형식으로 인한 Fallback 완료: {len(parsed_items)}개 카드 생성")
+                return html, parsed_items, current_global_index
+            else:
+                self.logger.error(f"❌ {category} 표 형식 감지 + 원본 뉴스 없음 = 빈 결과 반환")
+                return "", [], start_index
+
+        # 원본 뉴스 링크 매핑 생성 (링크 -> 뉴스 데이터)
+        link_to_news = {}
+        if fallback_news_list:
+            for news in fallback_news_list:
+                link = news.get('link', '')
+                if link:
+                    link_to_news[link] = news
 
         for line in lines:
             line = line.strip()
@@ -1102,7 +1181,11 @@ class NewsletterSystem:
             match_num = re.search(patterns['number'], line)
             if match_num:
                 if current_card:
-                    card_html, card_item = self._create_card_html_v3(current_card, local_index, current_global_index)
+                    card_html, card_item = self._create_card_html_v3(
+                        current_card, local_index, current_global_index,
+                        link_to_news.get(current_card.get('link', '')),
+                        fallback_news_list=reference_news_list # 원본 뉴스 리스트 전달 (전체 기준)
+                    )
                     if card_html:
                         html += card_html
                         parsed_items.append(card_item)
@@ -1110,6 +1193,12 @@ class NewsletterSystem:
                         current_global_index += 1
                     current_card = {}
                 current_card['number'] = match_num.group(1)
+                continue
+
+            # ID 감지
+            match_id = re.search(patterns['id'], line)
+            if match_id:
+                current_card['id'] = match_id.group(1)
                 continue
 
             # 제목 감지
@@ -1139,7 +1228,11 @@ class NewsletterSystem:
 
         # 마지막 카드 처리
         if current_card:
-            card_html, card_item = self._create_card_html_v3(current_card, local_index, current_global_index)
+            card_html, card_item = self._create_card_html_v3(
+                current_card, local_index, current_global_index,
+                link_to_news.get(current_card.get('link', '')),
+                fallback_news_list=reference_news_list # 원본 뉴스 리스트 전달 (전체 기준)
+            )
             if card_html:
                 html += card_html
                 parsed_items.append(card_item)
@@ -1163,7 +1256,11 @@ class NewsletterSystem:
                 # 요약 내용: content_preview -> full_content -> 기본값 순으로 시도
                 summary = news.get('content_preview', '') or news.get('full_content', '') or '요약 없음'
                 if summary and len(summary) > 200:
-                    summary = summary[:200]
+                    summary = summary[:200].strip()
+                    # 문장 중간에서 잘리지 않도록 마지막 마침표까지만 사용
+                    last_period = summary.rfind('.')
+                    if last_period > 100:
+                        summary = summary[:last_period + 1]
 
                 fallback_card = {
                     'number': str(idx),
@@ -1172,7 +1269,8 @@ class NewsletterSystem:
                     'link': news.get('link', '#')
                 }
 
-                card_html, card_item = self._create_card_html_v3(fallback_card, local_index, current_global_index)
+                # skip_validation=True로 품질 검증 우회 (이미 Fallback 데이터이므로)
+                card_html, card_item = self._create_card_html_v3(fallback_card, local_index, current_global_index, news, skip_validation=True)
                 if card_html:
                     html += card_html
                     parsed_items.append(card_item)
@@ -1183,15 +1281,37 @@ class NewsletterSystem:
 
         return html, parsed_items, current_global_index
 
-    def _create_card_html_v3(self, card, local_index, global_index):
-        """V3 템플릿용 카드 HTML 생성 및 아이템 반환"""
+    def _create_card_html_v3(self, card, local_index, global_index, original_news=None, skip_validation=False, fallback_news_list=None):
+        """V3 템플릿용 카드 HTML 생성 및 아이템 반환 (제목=요약 검증 + Fallback 추가 + ID 기반 링크 복원)
+
+        Args:
+            skip_validation (bool): True일 경우 품질 검증을 건너뜀 (Fallback 카드 생성 시 사용)
+            fallback_news_list (list): 원본 뉴스 리스트 (ID 기반 링크 복원용)
+        """
         title_num = str(local_index).zfill(2)
         ref_num = str(global_index).zfill(2)
 
         # 필수 필드 검증
         title = card.get('title', '').strip()
         link = card.get('link', '').strip()
-        
+        news_id = card.get('id')
+
+        # [ID 기반 링크 복원] AI가 링크를 잘랐을 경우를 대비하여 원본 데이터에서 복원
+        if news_id and fallback_news_list:
+            try:
+                idx = int(news_id) - 1
+                if 0 <= idx < len(fallback_news_list):
+                    original_data = fallback_news_list[idx]
+                    original_link = original_data.get('link')
+                    if original_link:
+                        if link != original_link:
+                            self.logger.info(f"ID({news_id}) 기반 링크 복원: {link[:30]}... -> {original_link[:30]}...")
+                            link = original_link
+                            # original_news 객체도 업데이트
+                            original_news = original_data
+            except Exception as e:
+                self.logger.warning(f"ID 기반 링크 복원 중 오류: {e}")
+
         if not title:
             self.logger.warning(f"카드 {local_index} 제목 누락, 건너뜀")
             return "", None
@@ -1199,8 +1319,55 @@ class NewsletterSystem:
             self.logger.warning(f"카드 {local_index} 링크 누락, 건너뜀")
             return "", None
 
-        # 요약이 없으면 경고 로그 (하지만 카드는 생성)
+        # 요약 검증 (제목과 동일하거나 너무 유사한 경우 Fallback 사용)
         summary = card.get('summary', '').strip()
+
+        # skip_validation=True인 경우 품질 검증 생략 (이미 Fallback 처리된 데이터)
+        if not skip_validation:
+            # 제목과 요약 정규화 (공백, 특수문자 제거 후 비교)
+            import re
+            title_normalized = re.sub(r'[^\w\s]', '', title.lower()).strip()
+            summary_normalized = re.sub(r'[^\w\s]', '', summary.lower()).strip()
+
+            # 요약 품질 검사 플래그
+            needs_fallback = False
+
+            # 1. 완전히 동일한 경우
+            if summary_normalized == title_normalized:
+                self.logger.error(f"❌ 카드 {local_index} ('{title[:30]}...') 요약이 제목과 동일함! Fallback 사용 시도")
+                needs_fallback = True
+
+            # 2. 요약이 제목을 포함하고 있고, 추가 정보가 거의 없는 경우 (유사도 80% 이상)
+            elif summary_normalized and title_normalized in summary_normalized:
+                # 제목을 제외한 나머지 부분의 길이 확인
+                remaining = summary_normalized.replace(title_normalized, '').strip()
+                if len(remaining) < len(title_normalized) * 0.3:  # 추가 정보가 제목의 30% 미만
+                    self.logger.warning(f"⚠️ 카드 {local_index} ('{title[:30]}...') 요약이 제목과 너무 유사함. Fallback 사용 시도")
+                    needs_fallback = True
+
+            # 3. 요약이 너무 짧은 경우 (20자 미만)
+            elif len(summary) < 20:
+                self.logger.warning(f"⚠️ 카드 {local_index} ('{title[:30]}...') 요약이 너무 짧음 ({len(summary)}자). Fallback 사용 시도")
+                needs_fallback = True
+
+            # Fallback 로직: 원본 뉴스의 content_preview 사용
+            if needs_fallback and original_news:
+                fallback_summary = original_news.get('content_preview', '') or original_news.get('full_content', '')
+                if fallback_summary and len(fallback_summary) > 50:
+                    # 200자로 제한
+                    summary = fallback_summary[:200].strip()
+                    # 문장 중간에서 잘리지 않도록 마지막 마침표까지만 사용
+                    last_period = summary.rfind('.')
+                    if last_period > 100:  # 최소 100자 이상 확보된 경우에만 마침표 기준 자르기
+                        summary = summary[:last_period + 1]
+                    self.logger.info(f"✅ 카드 {local_index} Fallback 요약 사용 ({len(summary)}자)")
+                else:
+                    self.logger.error(f"❌ 카드 {local_index} Fallback 실패 (원본 뉴스 데이터 부족), 카드 건너뜀")
+                    return "", None
+            elif needs_fallback and not original_news:
+                self.logger.error(f"❌ 카드 {local_index} Fallback 실패 (원본 뉴스 데이터 없음), 카드 건너뜀")
+                return "", None
+
         if not summary:
             self.logger.warning(f"카드 {local_index} ('{title[:30]}...') 요약 누락 - 빈 요약으로 생성")
             summary = ""
@@ -1209,7 +1376,7 @@ class NewsletterSystem:
                     <div class="news-item">
                         <span class="news-title"><span class="news-bullet">{title_num}</span> {title}</span>
                         <p class="news-body">
-                            {summary} <a href="#news-{global_index}" class="ref-mark">{ref_num}</a>
+                            {summary} <a href="{link}" target="_blank" class="ref-mark">{ref_num}</a>
                         </p>
                     </div>
         """
